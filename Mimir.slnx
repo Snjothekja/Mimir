@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="frontend/frontend.esproj">
+    <Build />
+    <Deploy />
+  </Project>
+  <Project Path="Mimir.AppHost/Mimir.AppHost.csproj" />
+  <Project Path="Mimir.Server/Mimir.Server.csproj" />
+</Solution>
