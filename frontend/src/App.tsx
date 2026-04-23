@@ -9,6 +9,14 @@ interface WeatherForecast {
   summary: string
 }
 
+interface FormElements extends HTMLFormControlsCollection {
+    usernameInput: HTMLInputElement
+    passwordInput: HTMLInputElement
+}
+interface LoginFormElement extends HTMLFormElement {
+    readonly elements: FormElements
+}
+
 function App() {
   const [weatherData, setWeatherData] = useState<WeatherForecast[]>([])
   const [loading, setLoading] = useState(false)
@@ -34,10 +42,36 @@ function App() {
     } finally {
       setLoading(false)
     }
-  }
+   }
+
+    const fetchLoginQuery = async (username: string, password: string) => {
+        setLoading(true)
+        setError(null)
+
+        alert("Got this username: " + username + " password: " + password)
+        const userPass = username + ":" + password;
+        try {  
+            const response = await fetch('api/mimirpostgres?userAndPass=' + userPass.toString(), {
+                method: "POST",
+            })
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`)
+            }
+            else {
+                alert("Got Login Screen" + response.status)
+            }
+
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to log in')
+            console.error('Error loggin in:', err)
+        } finally {
+            setLoading(false)
+        }
+    }
 
   useEffect(() => {
-    fetchWeatherForecast()
+      fetchWeatherForecast()
   }, [])
 
   const formatDate = (dateString: string) => {
@@ -46,6 +80,10 @@ function App() {
       month: 'short', 
       day: 'numeric' 
     })
+    }
+  function handleLoginSubmit(event: React.FormEvent<LoginFormElement>) {
+      event.preventDefault()
+      fetchLoginQuery(event.currentTarget.elements.usernameInput.value, event.currentTarget.elements.passwordInput.value)
   }
 
   return (
@@ -60,11 +98,32 @@ function App() {
         >
           <img src={aspireLogo} className="logo" alt="Aspire logo" />
         </a>
-        <h1 className="app-title">Aspire Starter</h1>
-        <p className="app-subtitle">Modern distributed application development</p>
+        <h1 className="app-title">Log In</h1>
       </header>
 
       <main className="main-content">
+        <section className="login-section" aria-labelledby="">
+            <div className="loginform">
+                      <form onSubmit={handleLoginSubmit}>
+                          <div>
+                              <label htmlFor="usernameInput">
+                                  Username:
+                              </label>
+                              <input type="text" id="usernameInput" />
+                          </div>
+                          <div>
+                              <label htmlFor="passwordInput">
+                                  Password:
+                              </label>
+                              <input type="text" id="passwordInput" />
+                              
+                          </div>
+                          <div>
+                              <input type="submit" value="Login" />
+                          </div>
+                  </form>
+            </div>
+        </section>
         <section className="weather-section" aria-labelledby="weather-heading">
           <div className="card">
             <div className="section-header">

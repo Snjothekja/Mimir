@@ -1,3 +1,7 @@
+using Microsoft.AspNetCore.Mvc;
+using Mimir.backend.postgres;
+using Mimir.Server.Postgres;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add service defaults & Aspire client integrations.
@@ -23,8 +27,18 @@ if (app.Environment.IsDevelopment())
 string[] summaries = ["Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"];
 
 var api = app.MapGroup("/api");
+app.MapPost("api/mimirpostgres", (string userAndPass) =>
+{
+    Console.WriteLine("Getting Mimir Postgres");
+    Console.WriteLine("Got this User and Pass: " + userAndPass);
+    return true;
+    //var _postGresAPICall = PostgresManager.PostgresAPICall(request, inputString, inputString2);
+
+}).WithName("GetPostgres");
+
 api.MapGet("weatherforecast", () =>
 {
+    Console.WriteLine("Got Weather Forecast");
     var forecast = Enumerable.Range(1, 5).Select(index =>
         new WeatherForecast
         (
@@ -44,6 +58,11 @@ app.UseFileServer();
 app.Run();
 
 record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
+{
+    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+}
+
+record MimirPostgres(DateOnly Date, int TemperatureC, string? Summary)
 {
     public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
 }
