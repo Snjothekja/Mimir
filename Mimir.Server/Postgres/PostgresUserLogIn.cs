@@ -11,14 +11,13 @@ namespace Mimir.backend.postgres
 {
     internal class PostgresUserLogIn
     {
-        static private string pgsSettings = "";
-        static public async Task<(int, string)> UserLogin()
+        static public async Task<(int, string)> UserLogin(string userAndPass)
         {
             Console.WriteLine("Starting Postgres User Login");
 
-            pgsSettings = GetPostgres.GetPostgresSettings();
+            string[] userArray = userAndPass.Split(':');
 
-            int _uid = await LoginInfo();
+            int _uid = await LoginInfo(userArray[0], userArray[1]);
 
 
             if(_uid == 0)
@@ -39,12 +38,8 @@ namespace Mimir.backend.postgres
             
         }
 
-        static private async Task<int> LoginInfo()
+        static private async Task<int> LoginInfo(string username, string password)
         {
-            Console.WriteLine("Username: ");
-            string _username = Console.ReadLine();
-            Console.WriteLine("Password: ");
-            string _password = Console.ReadLine();
             int _uid = 0;
             byte[] _puid = new byte[64];
             byte[] _salt = new byte[64];
@@ -56,7 +51,7 @@ namespace Mimir.backend.postgres
             {
                 Parameters =
                 {
-                    new() { Value = _username }
+                    new() { Value = username }
                 }
             };
 
@@ -101,7 +96,7 @@ namespace Mimir.backend.postgres
 
             await conn.CloseAsync();
 
-            byte[] derivedKey = Rfc2898DeriveBytes.Pbkdf2(_password, _salt, 500000, HashAlgorithmName.SHA3_512, 64);
+            byte[] derivedKey = Rfc2898DeriveBytes.Pbkdf2(password, _salt, 500000, HashAlgorithmName.SHA3_512, 64);
 
             string _derivedKeyString = "";
             foreach(byte b in derivedKey)

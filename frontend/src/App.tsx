@@ -1,90 +1,122 @@
-import { useState, useEffect } from 'react'
+import { useState} from 'react'
 import aspireLogo from '/Aspire.png'
 import './App.css'
 
-interface WeatherForecast {
-  date: string
-  temperatureC: number
-  temperatureF: number
-  summary: string
+interface UserInfo {
+    uid: number
+    token: string
 }
-
 interface FormElements extends HTMLFormControlsCollection {
     usernameInput: HTMLInputElement
     passwordInput: HTMLInputElement
+}
+
+interface FormElementsCreateUser extends HTMLFormControlsCollection {
+    usernameInput: HTMLInputElement
+    passwordInput: HTMLInputElement
+    passwordConfirmInput: HTMLInputElement
 }
 interface LoginFormElement extends HTMLFormElement {
     readonly elements: FormElements
 }
 
-function App() {
-  const [weatherData, setWeatherData] = useState<WeatherForecast[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [useCelsius, setUseCelsius] = useState(false)
+interface CreateUserFormElement extends HTMLFormElement {
+    readonly elements: FormElementsCreateUser
+}
 
-  const fetchWeatherForecast = async () => {
-    setLoading(true)
-    setError(null)
-    
-    try {
-      const response = await fetch('/api/weatherforecast')
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      
-      const data: WeatherForecast[] = await response.json()
-      setWeatherData(data)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch weather data')
-      console.error('Error fetching weather forecast:', err)
-    } finally {
-      setLoading(false)
-    }
-   }
+function App() {
+  const [error, setError] = useState<string | null>(null)
+
 
     const fetchLoginQuery = async (username: string, password: string) => {
-        setLoading(true)
         setError(null)
 
-        alert("Got this username: " + username + " password: " + password)
         const userPass = username + ":" + password;
         try {  
-            const response = await fetch('api/mimirpostgres?userAndPass=' + userPass.toString(), {
+            const response = await fetch('api/mimirpostgreslogin?userAndPass=' + userPass.toString(), {
                 method: "POST",
             })
 
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`)
             }
-            else {
-                alert("Got Login Screen" + response.status)
-            }
 
+            const data: UserInfo[] = await response.json()
+            if (data[0].toString() === "0") {
+                setError("Invalid Username/Password");
+                return;
+            }
+            localStorage.setItem("uid", data[0].toString());
+            localStorage.setItem("sessionid", data[1].toString())
+            window.location.assign("/home/home.html");
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to log in')
             console.error('Error loggin in:', err)
-        } finally {
-            setLoading(false)
         }
     }
 
-  useEffect(() => {
-      fetchWeatherForecast()
-  }, [])
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString(undefined, { 
-      weekday: 'short', 
-      month: 'short', 
-      day: 'numeric' 
-    })
+    const fetchCreateUserQuery = async (username: string, password: string, passwordCon: string) =>
+    {
+        if (password === passwordCon) {
+            const userPass = username + ":" + password;
+            try {
+                const response = await fetch('api/mimirpostgrescreateuser?userAndPass=' + userPass.toString(), {
+                    method: "POST"
+                })
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`)
+                }
+                const data: UserInfo[] = await response.json()
+                alert("New session ID = " + data[0].toString() + " " + data[1].toString())
+                localStorage.setItem("uid", data[0].toString());
+                localStorage.setItem("sessionid", data[1].toString())
+                location.assign("/home/home.html");
+            }
+            catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to log in')
+            console.error('Error loggin in:', err)
+            }
+        }
     }
   function handleLoginSubmit(event: React.FormEvent<LoginFormElement>) {
       event.preventDefault()
       fetchLoginQuery(event.currentTarget.elements.usernameInput.value, event.currentTarget.elements.passwordInput.value)
-  }
+    }
+
+    function handleCreateUserSubmit(event: React.FormEvent<CreateUserFormElement>) {
+        event.preventDefault()
+        fetchCreateUserQuery(event.currentTarget.elements.usernameInput.value, event.currentTarget.elements.passwordInput.value, event.currentTarget.elements.passwordConfirmInput.value)
+    }
+
+    function toggleShowElement(elementName: string) {
+        const x = document.getElementById(elementName);
+        if (x.style.display === "none") {
+            x.style.display = "block";
+            if (elementName === "loginDiv") {
+                const z = document.getElementById("createUserDiv");
+                z.style.display = "none";
+            }
+            if (elementName === "createUserDiv") {
+                const z = document.getElementById("loginDiv");
+                z.style.display = "none";
+            }
+        } else {
+            x.style.display = "none";
+            if (elementName === "loginDiv") {
+                const z = document.getElementById("createUserDiv");
+                z.style.display = "block";
+            }
+            if (elementName === "createUserDiv") {
+                const z = document.getElementById("loginDiv");
+                z.style.display = "block";
+            }
+        }
+    }
+
+    function handleButtonEvent(event: React.MouseEvent<HTMLButtonElement>) {
+        event.preventDefault()
+        toggleShowElement(event.currentTarget.value)
+    }
 
   return (
     <div className="app-container">
@@ -102,9 +134,12 @@ function App() {
       </header>
 
       <main className="main-content">
-        <section className="login-section" aria-labelledby="">
-            <div className="loginform">
+              <section className="login-section" aria-labelledby="">
+                  <button id="loginDivButton" value="loginDiv" onClick={handleButtonEvent}>Login</button>
+                  <button id="createUserDivButton" value="createUserDiv" onClick={handleButtonEvent}>New User</button>
+            <div className="loginform" id="loginDiv">
                       <form onSubmit={handleLoginSubmit}>
+                          <h3> Log In </h3>
                           <div>
                               <label htmlFor="usernameInput">
                                   Username:
@@ -122,59 +157,38 @@ function App() {
                               <input type="submit" value="Login" />
                           </div>
                   </form>
-            </div>
+                  </div>
+
+                  <div className="createuserform" id="createUserDiv">
+                      <form onSubmit={handleCreateUserSubmit}>
+                          <h3> Create New User </h3>
+                          <div>
+                              <label htmlFor="usernameInput">
+                                  Username:
+                              </label>
+                              <input type="text" id="usernameInput" />
+                          </div>
+                          <div>
+                              <label htmlFor="passwordInput">
+                                  Password:
+                              </label>
+                              <input type="text" id="passwordInput" />
+
+                          </div>
+                          <div>
+                              <label htmlFor="passwordConfirmInput">
+                                  Password Confirm:
+                              </label>
+                              <input type="text" id="passwordConfirmInput" />
+
+                          </div>
+                          <div>
+                              <input type="submit" value="CreateUser" />
+                          </div>
+                      </form>
+                  </div>
         </section>
-        <section className="weather-section" aria-labelledby="weather-heading">
-          <div className="card">
-            <div className="section-header">
-              <h2 id="weather-heading" className="section-title">Weather Forecast</h2>
-              <div className="header-actions">
-                <fieldset className="toggle-switch" aria-label="Temperature unit selection">
-                  <legend className="visually-hidden">Temperature unit</legend>
-                  <button 
-                    className={`toggle-option ${!useCelsius ? 'active' : ''}`}
-                    onClick={() => setUseCelsius(false)}
-                    aria-pressed={!useCelsius}
-                    type="button"
-                  >
-                    <span aria-hidden="true">°F</span>
-                    <span className="visually-hidden">Fahrenheit</span>
-                  </button>
-                  <button 
-                    className={`toggle-option ${useCelsius ? 'active' : ''}`}
-                    onClick={() => setUseCelsius(true)}
-                    aria-pressed={useCelsius}
-                    type="button"
-                  >
-                    <span aria-hidden="true">°C</span>
-                    <span className="visually-hidden">Celsius</span>
-                  </button>
-                </fieldset>
-                <button 
-                  className="refresh-button"
-                  onClick={fetchWeatherForecast} 
-                  disabled={loading}
-                  aria-label={loading ? 'Loading weather forecast' : 'Refresh weather forecast'}
-                  type="button"
-                >
-                  <svg 
-                    className={`refresh-icon ${loading ? 'spinning' : ''}`}
-                    width="20" 
-                    height="20" 
-                    viewBox="0 0 24 24" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="2"
-                    aria-hidden="true"
-                    focusable="false"
-                  >
-                    <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
-                  </svg>
-                  <span>{loading ? 'Loading...' : 'Refresh'}</span>
-                </button>
-              </div>
-            </div>
-            
+        
             {error && (
               <div className="error-message" role="alert" aria-live="polite">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -185,38 +199,6 @@ function App() {
                 <span>{error}</span>
               </div>
             )}
-            
-            {loading && weatherData.length === 0 && (
-              <div className="loading-skeleton" role="status" aria-live="polite" aria-label="Loading weather data">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="skeleton-row" aria-hidden="true" />
-                ))}
-                <span className="visually-hidden">Loading weather forecast data...</span>
-              </div>
-            )}
-            
-            {weatherData.length > 0 && (
-              <div className="weather-grid">
-                {weatherData.map((forecast, index) => (
-                  <article key={index} className="weather-card" aria-label={`Weather for ${formatDate(forecast.date)}`}>
-                    <h3 className="weather-date">
-                      <time dateTime={forecast.date}>{formatDate(forecast.date)}</time>
-                    </h3>
-                    <p className="weather-summary">{forecast.summary}</p>
-                    <div className="weather-temps" aria-label={`Temperature: ${useCelsius ? forecast.temperatureC : forecast.temperatureF} degrees ${useCelsius ? 'Celsius' : 'Fahrenheit'}`}>
-                      <div className="temp-group">
-                        <span className="temp-value" aria-hidden="true">
-                          {useCelsius ? forecast.temperatureC : forecast.temperatureF}°
-                        </span>
-                        <span className="temp-unit" aria-hidden="true">{useCelsius ? 'Celsius' : 'Fahrenheit'}</span>
-                      </div>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
       </main>
 
       <footer className="app-footer">

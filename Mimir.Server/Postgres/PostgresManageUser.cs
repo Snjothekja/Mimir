@@ -38,7 +38,7 @@ namespace Mimir.backend.postgres
                     new () { Value = username }
                 }
             };
-            await using var reader = await command.ExecuteReaderAsync();
+            await command.ExecuteReaderAsync();
             await conn.CloseAsync();
         }
 
@@ -69,7 +69,7 @@ namespace Mimir.backend.postgres
                     new() { Value = username }
                 }
             };
-            await using var reader = await command.ExecuteReaderAsync();
+            await command.ExecuteReaderAsync();
             await conn.CloseAsync();
         }
 

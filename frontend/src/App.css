@@ -200,95 +200,6 @@
   color: var(--section-title-color);
 }
 
-/* Counter area */
-.counter-card .section-header {
-  margin-bottom: 0;
-}
-
-.counter-panel {
-  background: var(--weather-card-bg);
-  border-radius: 0.75rem;
-  border: 1px solid var(--weather-card-border);
-  padding: 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: var(--tile-gap);
-  min-height: var(--tile-min-height);
-  backdrop-filter: blur(10px);
-  flex: 1;
-}
-
-.counter-value-group {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.25rem;
-  flex: 1;
-  margin-bottom: var(--tile-gap);
-  text-align: center;
-}
-
-.counter-label {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--text-tertiary);
-  font-weight: 600;
-}
-
-.counter-value {
-  font-size: 2.25rem;
-  font-weight: 700;
-  line-height: 1;
-  background: linear-gradient(135deg, var(--accent-gradient-start) 0%, var(--accent-gradient-end) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.increment-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  background: linear-gradient(135deg, var(--accent-gradient-start) 0%, var(--accent-gradient-end) 100%);
-  color: white;
-  border: none;
-  border-radius: 0.5rem;
-  padding: 0 1.5rem;
-  height: var(--cta-height);
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-  width: 100%;
-  margin-top: auto;
-}
-
-.increment-button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-}
-
-.increment-button:active {
-  transform: translateY(0);
-}
-
-.increment-button:focus-visible {
-  outline: 3px solid var(--accent-gradient-end);
-  outline-offset: 2px;
-}
-
-.increment-icon {
-  transition: transform 0.3s ease;
-}
-
-.increment-button:hover .increment-icon {
-  transform: scale(1.1);
-}
-
 /* Toggle switch */
 .toggle-switch {
   display: flex;
@@ -790,5 +701,9 @@
 *:focus-visible {
   outline: 3px solid var(--accent-gradient-end);
   outline-offset: 2px;
+}
+
+.createuserform {
+    display: none;
 }
 

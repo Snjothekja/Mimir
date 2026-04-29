@@ -1,4 +1,5 @@
 ﻿using Npgsql;
+using Npgsql.Internal.Postgres;
 using System;
 using System.Collections.Generic;
 using System.Runtime;
@@ -24,12 +25,14 @@ namespace Mimir.backend.postgres
             _ran.NextBytes(salt);
             byte[] derivedKey = Rfc2898DeriveBytes.Pbkdf2(password, salt, 500000, HashAlgorithmName.SHA3_512, 64);
 
-            await AddUserToDB(username, salt, derivedKey);
+            bool finished = await AddUserToDB(username, salt, derivedKey);
+            while (!finished) { }
+            await SetUserInfo(username);
 
             return true;
         }
 
-        static public async Task AddUserToDB(string username, byte[] salt, byte[] hashedPass)
+        static public async Task<bool> AddUserToDB(string username, byte[] salt, byte[] hashedPass)
         {
 
             int _uid = 0;
@@ -76,12 +79,13 @@ namespace Mimir.backend.postgres
                 }
             };
 
-            command3.ExecuteNonQuery();
+            int i = command3.ExecuteNonQuery();
 
             //using var command4 = new NpgsqlCommand(HeaderEncodingSelector setval(pg_get_serial_seq);
 
             await transaction.CommitAsync();
             await conn.CloseAsync();
+            return true;
         }
 
         static private async Task<bool> CheckUsernameAvaliable(string name)
@@ -119,6 +123,45 @@ namespace Mimir.backend.postgres
             {
                 return true;
             }
+        }
+
+        static async Task SetUserInfo(string username)
+        {
+            await using var conn = new NpgsqlConnection(GetPostgres.GetPostgresSettings());
+            await conn.OpenAsync();
+
+            await using var command = new NpgsqlCommand("SELECT uid FROM uinfo.users WHERE username = ($1)", conn)
+            {
+                Parameters =
+                {
+                    new () { Value = username }
+                }
+            };
+
+            await using var reader = await command.ExecuteReaderAsync();
+            int uid = 0;
+
+            while (reader.Read())
+            {
+                uid = reader.GetInt32(0);
+            }
+
+            while (reader.IsClosed == false)
+            {
+                await reader.CloseAsync();
+            }
+            await using var command2 = new NpgsqlCommand("INSERT INTO public.userprofile (uid, pfp, profiledesc, followers, \"following\", reposts, username) VALUES(($1), '', '', '', '', '', ($2));", conn)
+            {
+                Parameters =
+                {
+                    new () { Value = uid },
+                    new NpgsqlParameter() { Value = username }
+                }
+            };
+
+            await command2.ExecuteNonQueryAsync();
+
+            conn.CloseAsync();
         }
 
     }
