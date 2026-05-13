@@ -150,7 +150,7 @@ namespace Mimir.backend.postgres
             {
                 await reader.CloseAsync();
             }
-            await using var command2 = new NpgsqlCommand("INSERT INTO public.userprofile (uid, pfp, profiledesc, followers, \"following\", reposts, username) VALUES(($1), '', '', '', '', '', ($2));", conn)
+            await using var command2 = new NpgsqlCommand("INSERT INTO public.userprofile (uid, pfp, profiledesc, followers, \"following\", reposts, username, banner) VALUES(($1), '', '', '', '', '', ($2), '');", conn)
             {
                 Parameters =
                 {

@@ -2,7 +2,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.ObjectPool;
 using Mimir.backend.postgres;
 using Mimir.Server.Postgres;
+using System.Reflection.Metadata;
 using System.Runtime.CompilerServices;
+using static System.Net.Mime.MediaTypeNames;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,8 +27,6 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-
-string[] summaries = ["Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"];
 
 var api = app.MapGroup("/api");
 app.MapPost("api/mimirpostgreslogin", async (string userAndPass) =>
@@ -51,34 +51,36 @@ app.MapPost("api/mimirpostgrescreateuser", async (string userAndPass) =>
 
 }).WithName("GetPostgresCreateUser");
 
+// Post apis
+
+app.MapPost("api/mimirnewpost", async ([FromForm] string token, [FromForm] string uid, [FromForm] string postText, IFormFile? image) =>
+{
+    Console.WriteLine("Adding new post");
+    bool validToken = CheckToken.CheckUserToken(token, int.Parse(uid));
+    if (!validToken)
+    {
+        return validToken;
+    }
+    await PostgresManager.PostgresAPICall("post", postText, "", "", int.Parse(uid), 0, image);
+
+    return validToken;
+}).WithName("GetPostgresNewPost").DisableAntiforgery();
+
 app.MapPost("api/mimirpostgresgetposts", (string arguments) =>
 {
 
     return "";
 }).WithName("GetPostgresGetPosts");
 
-app.MapPost("api/mimirpostgresupdateaccount", async (string UIDTokenChangeText) =>
-{
-    // { UID, Token, Wanted Change, Text }
-    string[] changeTextArray = UIDTokenChangeText.Split(':', 3);
-    bool validToken = CheckToken.CheckUserToken(changeTextArray[1], Int32.Parse(changeTextArray[0]));
-    if (!validToken)
-    {
-        return false;
-    }
-    await PostgresManager.PostgresAPICall(changeTextArray[2], changeTextArray[3]);
-    return true;
-}).WithName("GetPostgresUpdateAccount");
-
 app.MapPost("api/mimirpostgresgetuseraccount", async (string uidAndToken) =>
 {
-    // Promised array { tokenValidBool, username, pfp, profiledesc, followersamt, followingamt }  
+    // Promised array { tokenValidBool, username, pfp, profiledesc, followersamt, followingamt, profilebanner }  
     string[] uidTokenArray = uidAndToken.Split(':');
     bool validToken = CheckToken.CheckUserToken(uidTokenArray[1], Int32.Parse(uidTokenArray[0]));
     if (!validToken)
     {
         Console.WriteLine("Wrong Token to Get User Account");
-        string[] invalidToken = { "false", "", "", "", "", ""};
+        string[] invalidToken = { "false", "", "", "", "", "", ""};
         return invalidToken;
     }
     string[] userAccountArray = await PostgresManager.PostgresAPICall("getaccountdata", "", "", "", int.Parse(uidTokenArray[0]));
@@ -91,27 +93,6 @@ app.MapPost("api/mimirpostgresgetforeignaccount", (string arguments) =>
     return "";
 }).WithName("GetPostgresGetForeignAccount");
 
-app.MapPost("api/mimiruploadfile", (FileStream fileStream) =>
-{
-
-    return "";
-}).WithName("GetUploadFile");
-
-api.MapGet("weatherforecast", () =>
-{
-    Console.WriteLine("Got Weather Forecast");
-    var forecast = Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
-
 api.MapPost("api/mimirchecktoken", (string uidToken) =>
 {
     string[] uidTokenArray = uidToken.Split(':');
@@ -122,6 +103,49 @@ api.MapPost("api/mimirchecktoken", (string uidToken) =>
     }
     return true;
 }).WithName("CheckToken");
+
+
+
+// Updating Account Information
+
+app.MapPost("api/mimirpostgresupdatedesc", async (string UIDTokenChangeText) =>
+{
+    // { UID, Token, Wanted Change, Text }
+    Console.WriteLine("Updating Account");
+    string[] changeTextArray = UIDTokenChangeText.Split(':');
+
+    Console.WriteLine("UID: " + changeTextArray[0] + " Token: " + changeTextArray[1] + " Change: " + changeTextArray[2] + " Text: " + changeTextArray[3]);
+    bool validToken = CheckToken.CheckUserToken(changeTextArray[1], Int32.Parse(changeTextArray[0]));
+    if (!validToken)
+    {
+        return false;
+    }
+    await PostgresManager.PostgresAPICall(changeTextArray[2], changeTextArray[3], changeTextArray[0]);
+    return true;
+}).WithName("GetPostgresUpdateDesc");
+
+app.MapPost("api/mimirupdatepfp", async ([FromForm] string token, [FromForm] string uid, IFormFile image) =>
+{
+    Console.WriteLine("Updating PFP: " + image.FileName);
+    bool validToken = CheckToken.CheckUserToken(token, Int32.Parse(uid));
+    if (!validToken)
+    {
+        return;
+    }
+    await PostgresManager.PostgresAPICall("pfp", uid, "", "", 0, 0, image);
+
+}).WithName("UpdatePFP").DisableAntiforgery();
+
+app.MapPost("api/mimirupdatebanner", async ([FromForm] string token, [FromForm] string uid, IFormFile image) =>
+{ 
+    Console.WriteLine("Updating PFP: " + image.FileName);
+    bool validToken = CheckToken.CheckUserToken(token, Int32.Parse(uid));
+    if (!validToken)
+    {
+        return;
+    }
+    await PostgresManager.PostgresAPICall("banner", uid, "", "", 0, 0, image);
+}).WithName("UpdateBanner").DisableAntiforgery();
 
 app.MapDefaultEndpoints();
 

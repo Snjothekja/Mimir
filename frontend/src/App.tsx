@@ -150,7 +150,7 @@ function App() {
                               <label htmlFor="passwordInput">
                                   Password:
                               </label>
-                              <input type="text" id="passwordInput" />
+                              <input type="password" id="passwordInput" />
                               
                           </div>
                           <div>
@@ -170,16 +170,16 @@ function App() {
                           </div>
                           <div>
                               <label htmlFor="passwordInput">
-                                  Password:
+                                  Password (Must contain at least one (1) number (0-9) and special character (!@#$%^&*)):
                               </label>
-                              <input type="text" id="passwordInput" />
+                              <input type="password" id="passwordInput" pattern="/^(?=.*[\d])(?=.*[!@#$%^&*])[\w!@#$%^&*]{6,}$/" />
 
                           </div>
                           <div>
                               <label htmlFor="passwordConfirmInput">
                                   Password Confirm:
                               </label>
-                              <input type="text" id="passwordConfirmInput" />
+                              <input type="password" id="passwordConfirmInput" />
 
                           </div>
                           <div>

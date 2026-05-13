@@ -1,4 +1,5 @@
-﻿using Mimir.Server.Postgres;
+﻿using Mimir.Server.FileStorage;
+using Mimir.Server.Postgres;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -11,15 +12,17 @@ namespace Mimir.backend.postgres
     internal class PostgresManager
     {
         
-        interface postInterface
+        public struct PostStruct
         {
-            int postid { get; set; }
-            int posterUID { get; set; }
-            string? postText { get; set; }
-            string? images { get; set; }
-            int likeAmt { get; set; }
-            int repostAmt { get; set; }
-            int commentAmt { get; set; }
+            public int postid { get; set; }
+            public int posterUID { get; set; }
+            public string? postText { get; set; }
+            public string? images { get; set; }
+            public int likeAmt { get; set; }
+            public int repostAmt { get; set; }
+            public int commentAmt { get; set; }
+            public DateTime datePosted { get; set;  }
+            public int originalPostID { get; set; }
 
         }
 
@@ -76,7 +79,7 @@ namespace Mimir.backend.postgres
         }
 
         static public async Task<string[]> PostgresAPICall(string request, string inputString = "", string inputString2 = "", 
-            string inputString3 = "", int inputInt = 0, int inputInt2 = 0)
+            string inputString3 = "", int inputInt = 0, int inputInt2 = 0, IFormFile file = null)
         {
             switch (request)
             {
@@ -85,6 +88,7 @@ namespace Mimir.backend.postgres
                     //string tokenUIDJson = JsonSerializer.Serialize();
                     string[] tokenUIDStringArray = { tokenUID.Result.Item1.ToString(), tokenUID.Result.Item2};
                     return tokenUIDStringArray;
+
                 case "createuser":
                     string[] userPass = inputString.Split(':');
                     await PostgresCreateUser.CreateUser(userPass[0], userPass[1]);
@@ -93,21 +97,48 @@ namespace Mimir.backend.postgres
                     //string tokenUIDJson = JsonSerializer.Serialize();
                     string[] tokenUIDStringArrayCreate = { tokenUIDCreate.Item1.ToString(), tokenUIDCreate.Item2 };
                     return tokenUIDStringArrayCreate;
+
                 case "getaccountdata":
                     var accountData = await PostgresGetUserAccount.GetUserAccountDetails(inputInt);
                     Console.WriteLine("Getting User Account Data");
-                    string[] accountDataArray = { "true", accountData[0].ToString(), accountData[1].ToString(), accountData[2].ToString(), accountData[3].ToString(), accountData[4].ToString() };
+                    string[] accountDataArray = { "true", accountData[0].ToString(), accountData[1].ToString(), accountData[2].ToString(), accountData[3].ToString(), accountData[4].ToString(), accountData[5].ToString() };
                     return accountDataArray;
+
                 case "getforiegnaccountdata":
                     string[] test2 = new string[1];
                     return test2;
-                case "updateaccount":
-                    string[] test3 = new string[1];
-                    PostgresUpdateUserAccount.UpdateUserAccount(request, inputString);
-                    return test3;
+
+                case "desc":
+                    await PostgresUpdateUserDesc.UpdateUserAccount(request, inputString, inputString2);
+                    return new string[1];
+
+                case "pfp":
+                    string pathpfp = ImageUpload.UploadImage(file);
+                    await PostgresUpdateUserPFP.UpdatePFP(int.Parse(inputString), pathpfp);
+                    return new string[1];
+
+                case "banner":
+                    string pathbanner = ImageUpload.UploadImage(file);
+                    PostgresUpdateUserBanner.UpdateBanner(int.Parse(inputString), pathbanner);
+                    return new string[1];
+
+                case "post":
+                    string imagePath = "";
+                    if (file != null)
+                    {
+                        imagePath = ImageUpload.UploadImage(file);
+                    }      
+                    await PostgresAddPost.AddPost(inputString, inputInt, imagePath);
+                    return new string[1];
             }
 
             return null;
+        }
+
+        internal async Task<PostStruct[]> GetPosts(int uid, DateTime dateTime)
+        {
+            PostStruct[] posts = await PostgresGetPosts.GetPosts(uid, dateTime);
+            return posts;
         }
     }
 }
