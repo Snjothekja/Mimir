@@ -11,13 +11,13 @@ namespace Mimir.Server.Postgres
         {
             await using var conn = new NpgsqlConnection(GetPostgres.GetPostgresSettings());
             await conn.OpenAsync();
-
-            await using var command = new NpgsqlCommand("SELECT TOP 5 * FROM public.posts WHERE posteruid = ($1) AND postdate <= ($2) ORDER BY postdate DESC", conn)
+            Console.WriteLine(wantedTime.ToString());
+            await using var command = new NpgsqlCommand("SELECT * FROM public.posts WHERE posteruid = ($1) AND postdate <= ($2) ORDER BY postdate DESC FETCH FIRST 5 ROWS ONLY", conn)
             {
                 Parameters =
                 {
                     new () { Value = uid },
-                    new NpgsqlParameter() { Value = wantedTime }
+                    new NpgsqlParameter() { Value = wantedTime.ToUniversalTime() }
                 }
             };
 
@@ -25,31 +25,46 @@ namespace Mimir.Server.Postgres
 
             var reader = command.ExecuteReader();
 
-            int i = 0;
-
-            while (reader.Read()) 
+            while (reader.Read())
             {
-
-                PostgresManager.PostStruct ps = new PostgresManager.PostStruct()
+                for (int i = 0; i < 4; i++)
                 {
-                    postid = reader.GetInt32(0),
-                    posterUID = reader.GetInt32(1),
-                    postText = reader.GetString(2),
-                    images = reader.GetString(3),
-                    likeAmt = reader.GetInt32(4),
-                    repostAmt = reader.GetInt32(5),
-                    commentAmt = reader.GetInt32(6),
-                    datePosted = reader.GetDateTime(7),
-                    originalPostID = reader.GetInt32(8),
-                };
+                    try
+                    {
+                        reader.GetFieldValue<int>(0);
+                        
+                    }
+                    catch
+                    {
+                        Console.WriteLine("Stopped at Row " + i.ToString() + ": When getting posts");
+                        break;
+                    }
+                        PostgresManager.PostStruct ps = new PostgresManager.PostStruct()
+                        {
+                            postid = reader.GetFieldValue<int>(0),
+                            posterUID = reader.GetFieldValue<int>(1),
+                            postText = reader.GetFieldValue<string>(2),
+                            images = reader.GetFieldValue<string>(3),
+                            likeAmt = reader.GetFieldValue<int>(7),
+                            repostAmt = reader.GetFieldValue<int>(8),
+                            commentAmt = reader.GetFieldValue<int>(9),
+                            datePosted = reader.GetFieldValue<DateTime>(10)
+                        };
+                    Console.WriteLine(ps.postText); 
+                    if (i > 0 && ps.postid == psarray[i - 1].postid)
+                    {
+                        break;
+                    }
+                    psarray[i] = ps;
+                    reader.Read();
+                        
+                }
 
-                psarray[i] = ps;
-                i++;
+                await conn.CloseAsync();
+                return psarray;
             }
 
-            await conn.CloseAsync();
             return psarray;
         }
-
     }
 }

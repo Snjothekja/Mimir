@@ -2,8 +2,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.ObjectPool;
 using Mimir.backend.postgres;
 using Mimir.Server.Postgres;
+using Mimir.Server.TestScripts;
+using Npgsql;
 using System.Reflection.Metadata;
 using System.Runtime.CompilerServices;
+using static Mimir.backend.postgres.PostgresManager;
 using static System.Net.Mime.MediaTypeNames;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -66,10 +69,12 @@ app.MapPost("api/mimirnewpost", async ([FromForm] string token, [FromForm] strin
     return validToken;
 }).WithName("GetPostgresNewPost").DisableAntiforgery();
 
-app.MapPost("api/mimirpostgresgetposts", (string arguments) =>
+app.MapPost("api/mimirpostgresgetposts", async (string arguments) =>
 {
-
-    return "";
+    string[] argumentArray = arguments.Split('|');
+    Console.WriteLine(argumentArray[0] + "    " + DateTime.Parse(argumentArray[1]));
+    PostgresManager.PostStruct[] posts = await PostgresManager.GetPosts(int.Parse(argumentArray[0]), DateTime.Parse(argumentArray[1]));
+    return posts;
 }).WithName("GetPostgresGetPosts");
 
 app.MapPost("api/mimirpostgresgetuseraccount", async (string uidAndToken) =>
@@ -87,21 +92,21 @@ app.MapPost("api/mimirpostgresgetuseraccount", async (string uidAndToken) =>
     return userAccountArray;
 }).WithName("GetPostgresGetUserAccount");
 
-app.MapPost("api/mimirpostgresgetforeignaccount", (string arguments) =>
+app.MapPost("api/mimirpostgresgetforeignaccount", async (string arguments) =>
 {
-
-    return "";
+    PostgresManager.ForeignAccountStruct[] foreignAccountInfo = await PostgresManager.GetForeignAccounts(arguments);
+    return foreignAccountInfo;
 }).WithName("GetPostgresGetForeignAccount");
 
-api.MapPost("api/mimirchecktoken", (string uidToken) =>
+app.MapPost("api/mimirchecktoken", (string uidToken) =>
 {
     string[] uidTokenArray = uidToken.Split(':');
     bool validToken = CheckToken.CheckUserToken(uidTokenArray[1], Int32.Parse(uidTokenArray[0]));
     if (!validToken)
     {
-        return false;
+        return @"{""check"":""false""}";
     }
-    return true;
+    return @"{""check"":""true""}";
 }).WithName("CheckToken");
 
 
@@ -147,13 +152,46 @@ app.MapPost("api/mimirupdatebanner", async ([FromForm] string token, [FromForm] 
     await PostgresManager.PostgresAPICall("banner", uid, "", "", 0, 0, image);
 }).WithName("UpdateBanner").DisableAntiforgery();
 
+
+// Reposts, Likes, and Comments API's
+
+app.MapPost("api/mimirlikepost", async (string tokenuidpostid) =>
+{
+    string[] tokenUIDPostidArray = tokenuidpostid.Split(":");
+    bool validToken = CheckToken.CheckUserToken(tokenUIDPostidArray[0], Int32.Parse(tokenUIDPostidArray[1]));
+    if (!validToken)
+    {
+        return;
+    }
+    PostgresManager.AddLike(int.Parse(tokenUIDPostidArray[2]), int.Parse(tokenUIDPostidArray[1]));
+
+}).WithName("LikePost");
+
+app.MapPost("api/mimirgetcomments", async (string uidTokenPostIDCommentID) =>
+{
+
+}).WithName("GetComments");
+
+app.MapPost("api/mimiraddcomment", async ([FromForm] string uid, [FromForm] string token, [FromForm] string postID, [FromForm] string commentID, [FromForm] string commentText) =>
+{
+    bool validToken = CheckToken.CheckUserToken(token, int.Parse(uid));
+    if (!validToken)
+    {
+        return;
+    }
+    PostgresManager.AddComment(uid, commentText, postID, commentID);
+}).WithName("AddComment");
+
+// Test Endpoints Remove if released
+
+app.MapGet("api/mimirtestscripts", async () =>
+{
+    CommentJSON.TestCommentJSONDeserialize();
+}).WithName("TestScripts");
+
 app.MapDefaultEndpoints();
 
 app.UseFileServer();
 
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-};

@@ -23,3 +23,17 @@ POST {{Mimir.Server_HostAddress}}/api/mimirpostgresgetuseraccount?uidAndToken={{
 
 ###
 
+
+@arguments=12|2026-06-23 15:28:44.599
+POST {{Mimir.Server_HostAddress}}/api/mimirpostgresgetposts?arguments={{arguments}}
+
+###
+
+GET {{Mimir.Server_HostAddress}}/api/mimirtestscripts
+
+###
+
+@uidToken=12:DShEdcArAy47fkYDsA8MWiMRB4sZXUct5
+POST {{Mimir.Server_HostAddress}}/api/mimirchecktoken?uidToken={{uidToken}}
+
+###

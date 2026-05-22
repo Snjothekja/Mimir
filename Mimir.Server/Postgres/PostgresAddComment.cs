@@ -5,9 +5,31 @@ using System.Text;
 
 namespace Mimir.backend.postgres
 {
+
+    /* {
+          id:
+          [
+          {"commentText":"", "uid":uid}
+           "comments":
+           [
+             {"commentText":"", "uid":uid}
+           ]
+          ]
+        
+        
+         }
+        */
+
+    internal class Comments
+    {
+        internal int ID { get; set; }
+        internal string CommentText { get; set; }
+        internal int UID { get; set; }
+    }
+
+
     internal class PostgresAddComment
     {
-        // {User ID, Comment ID, Comment Text, Comment on Comment ID (To comment on a comment)}  
 
         public static async Task AddComment(int uid, string text, int postID, int commentCommentID)
         {
@@ -40,10 +62,14 @@ namespace Mimir.backend.postgres
                 reader.Close();
             }
 
+            Console.WriteLine(_currentCommentString + " " + _commentCount);
+            return;
+            // Update For JSON
+
             _commentArray = _currentCommentString.Split(';');
 
             _commentId = Int32.Parse((_commentArray[_commentArray.Length - 1].Split(",")).ElementAt(3)) + 1;
-            
+
             string _commmentArrayPart = $"{uid},{_commentId},{text},{commentCommentID};";
 
             _currentCommentString += _commmentArrayPart;
@@ -60,8 +86,17 @@ namespace Mimir.backend.postgres
 
             await command.ExecuteNonQueryAsync();
 
-            await conn.CloseAsync(); 
+            await conn.CloseAsync();
         }
 
+        private string EncodeJSON()
+        {
+            return "";
+        }
+
+        private string DecodeJSON()
+        {
+            return "";
+        }
     }
 }

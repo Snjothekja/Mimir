@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics.Eventing.Reader;
 using System.Text;
 using System.Transactions;
 
@@ -26,7 +27,7 @@ namespace Mimir.backend.postgres
                 }
             };
             var reader = command.ExecuteReader();
-
+            
             while (reader.Read())
             {
                 _neededToken = reader.GetValue(0).ToString();

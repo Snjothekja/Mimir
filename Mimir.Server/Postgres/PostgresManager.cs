@@ -26,6 +26,12 @@ namespace Mimir.backend.postgres
 
         }
 
+        public struct ForeignAccountStruct
+        {
+            public string username { get; set; }
+            public string pfp { get; set; }
+        }
+
         static public async Task Main()
         {
             await UserActions();
@@ -104,21 +110,17 @@ namespace Mimir.backend.postgres
                     string[] accountDataArray = { "true", accountData[0].ToString(), accountData[1].ToString(), accountData[2].ToString(), accountData[3].ToString(), accountData[4].ToString(), accountData[5].ToString() };
                     return accountDataArray;
 
-                case "getforiegnaccountdata":
-                    string[] test2 = new string[1];
-                    return test2;
-
                 case "desc":
                     await PostgresUpdateUserDesc.UpdateUserAccount(request, inputString, inputString2);
                     return new string[1];
 
                 case "pfp":
-                    string pathpfp = ImageUpload.UploadImage(file);
+                    string pathpfp = ImageUpload.UploadImage(file, "pfp");
                     await PostgresUpdateUserPFP.UpdatePFP(int.Parse(inputString), pathpfp);
                     return new string[1];
 
                 case "banner":
-                    string pathbanner = ImageUpload.UploadImage(file);
+                    string pathbanner = ImageUpload.UploadImage(file, "banner");
                     PostgresUpdateUserBanner.UpdateBanner(int.Parse(inputString), pathbanner);
                     return new string[1];
 
@@ -126,7 +128,7 @@ namespace Mimir.backend.postgres
                     string imagePath = "";
                     if (file != null)
                     {
-                        imagePath = ImageUpload.UploadImage(file);
+                        imagePath = ImageUpload.UploadImage(file, "postimage");
                     }      
                     await PostgresAddPost.AddPost(inputString, inputInt, imagePath);
                     return new string[1];
@@ -135,10 +137,33 @@ namespace Mimir.backend.postgres
             return null;
         }
 
-        internal async Task<PostStruct[]> GetPosts(int uid, DateTime dateTime)
+        static internal async Task<PostStruct[]> GetPosts(int uid, DateTime dateTime)
         {
             PostStruct[] posts = await PostgresGetPosts.GetPosts(uid, dateTime);
             return posts;
+        }
+
+        static internal async Task<ForeignAccountStruct[]> GetForeignAccounts(string inputString)
+        {
+            Console.WriteLine(inputString);
+                string[] wantedUserUIDs = inputString.Split(":");
+                ForeignAccountStruct[] foreignAccountData = await PostgresGetForiegnAccount.GetForeignAccountData(wantedUserUIDs);
+                return foreignAccountData;
+        }
+
+        static internal async void AddLike(int puid, int uid)
+        {
+            await PostgresAddLike.AddLike(puid, uid);
+        }
+
+        static internal async void AddComment(string uid, string commentText, string postID, string commentOnCommentID)
+        {
+            await PostgresAddComment.AddComment(int.Parse(uid), commentText, int.Parse(postID), int.Parse(commentOnCommentID));
+        }
+
+        static internal async void AddRepost()
+        {
+
         }
     }
 }

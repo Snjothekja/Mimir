@@ -4,19 +4,16 @@ import * as React from 'react';
 function home() {
 
     interface PostInfo {
-        upfp: TexImageSource
-        posteruid: number
-        postid: number
-        posttext?: string
-        postimage?: TexImageSource
-        likeamt?: number
-        commentamt?: number
-        repostamt?: number
-    }
-
-    interface PostArrayInterface {
-        posteruid: number
-        postid: number
+        upfp: TexImageSource;
+        postid: number;
+        posterUID: number;
+        postText?: string;
+        images?: string;
+        likeAmt?: number;
+        repostAmt?: number;
+        commentAmt?: number;
+        datePosted: string;
+        originalPostID: number;
     }
 
     interface UserAccountInterface {
@@ -29,10 +26,25 @@ function home() {
         profilebanner: string
     }
 
+    interface ForeignAccountInfo {
+        username: string;
+        pfp: string;
+    }
+
+    interface CommentData {
+        CommentText: string;
+        UID: number;
+        CommentID: number;
+        CommentOnCommentID: number;
+        Comments: object;
+    }
+
     let setFilePFP: File;
     let setFileBanner: File;
-    let lastDate: Date;
+    const lastDate = new Date();
     let postImage: File;
+
+    let nextPostDivID = 0;
 
     const onFileChangePFP = (event) => {
         setFilePFP = event.target.files[0];
@@ -47,35 +59,33 @@ function home() {
     }
 
     const CheckToken = async () => {
-        let data = "";
         try {
             const accountToken = localStorage.getItem("sessionid");
             const accountUID = localStorage.getItem("uid");
+
             if (accountToken === null) {
                 window.location.assign("index.html");
-            }
+            };
+
             const uidToken = accountUID + ":" + accountToken;
-            const response = await fetch('api/mimirchecktoken?uidAndToken=' + uidToken.toString(), {
+            console.log("Sending Check Token Home");
+            const response = await fetch('../api/mimirchecktoken?uidToken=' + uidToken.toString(), {
                 method: "POST"
             })
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`)
             }
-            data = response.json().toString();
-
+            const data = await response.json();
+            if (data.check === "false") {
+                window.location.assign("index.html");
+            }
         }
         catch (err) {
             console.error('Error loggin in:', err)
-        }
-        if (data === "false") {
-            alert(data);
             window.location.assign("index.html");
         }
+        
     }
-    function GetNextPost() {
-
-    }
-
     function ClickedHome() {
 
     }
@@ -137,8 +147,6 @@ function home() {
     }
 
     const SubmitNewPost = async(postText: string) => {
-        const accountToken = localStorage.getItem("sessionid");
-        const accountUID = localStorage.getItem("uid");
 
         const content = new FormData();
         content.append("token", localStorage.getItem("sessionid"));
@@ -162,8 +170,29 @@ function home() {
         ClickedAccount();
     }
 
-    function ClickedForeignAccount() {
+    const ClickedForeignAccount = async (uid: string[]) => {
 
+        let uids: string;
+        uids = uid[0];
+        for (let i = 1; i < uid.length; i++) {
+            uids += ":" + uid[i];
+        }
+        
+        try {
+            const response = await fetch('../api/mimirpostgresgetforeignaccount?arguments=' + uids, {
+                method: "POST"
+            })
+            if (!response.ok) {
+                alert("Clicked Account Response Fail");
+                throw new Error(`HTTP error! status: ${response.status}`)
+            }
+
+            const data: ForeignAccountInfo[] = await response.json()
+            return data;
+        }
+        catch (err) {
+            console.error('Error setting description: ', err)
+        }
     }
 
     const EditDescription = async (description: string) => {
@@ -291,6 +320,44 @@ function home() {
         SubmitNewPost(event.currentTarget.newposttextarea.value);
     }
 
+    function handleGetPostsButton(event: React.MouseEvent<HTMLButtonElement>) {
+        event.preventDefault();
+        getPosts();
+    }
+
+    function handleClickedForeignAccount() {
+    }
+
+    function handleClickedLikeButton() {
+        console.log("Clicked Like Button");
+    }
+    function handleClickedRepostButton() {
+    }
+    function handleClickedCommentButton() {
+    }
+
+    /* Post Functions (reposting, liking, commenting) */
+
+    const likePost = async (postid: string) => {
+        const accountToken = localStorage.getItem("sessionid");
+        const accountUID = localStorage.getItem("uid");
+
+        const tokenUIDPost = accountToken.toString() + ":" + accountUID.toString() + ":" + postid.toString();
+
+        try {
+            const response = await fetch('../api/mimirupdatebanner?postiduid=' + tokenUIDPost, {
+                method: "POST",
+            })
+            if (!response.ok) {
+                alert("Clicked Account Response Fail");
+                throw new Error(`HTTP error! status: ${response.status}`)
+            }
+        }
+        catch {
+            console.warn("Cannot Like Post");
+        }
+    }
+
     window.onclick = function (event) {
         const editprofiledesc = document.getElementById("editprofiledesc");
         if (event.target == editprofiledesc) {
@@ -310,9 +377,517 @@ function home() {
         }
     }
 
-    function appendPosts() {
+    const getPosts = async () => {
+        await removePosts();
+        const content = new FormData();
+        content.append("uid", localStorage.getItem("uid"));
+        content.append("date", lastDate.toString());
         
+        const uidDate = localStorage.getItem("uid") + "|" + lastDate.toISOString();
+        console.log(uidDate);
+        try {
+            const response = await fetch('../api/mimirpostgresgetposts?arguments=' + uidDate.toString(), {
+                method: "POST",
+            })
+
+            if (!response.ok) {
+                alert("Clicked Account Response Fail");
+                throw new Error(`HTTP error! status: ${response.status}`)
+            }
+
+            const postarray: PostInfo[] = await response.json();
+            
+            appendPosts(postarray);
+        }
+        catch (err) {
+            console.error('Error setting description: ', err)
+        }
     }
+
+    const appendPosts = async(posts: PostInfo[]) => {
+        console.log("Appending Posts");
+        const wantedUIDs = [];
+        console.log("Getting Foreign Accounts: " + posts.length.toString());
+        for (let i = 0; i < posts.length; i++) {
+            console.log (i.toString() + " UID: " +  posts[i].posterUID.toString() + " Post Text: " + posts[i].postText);
+            wantedUIDs[i] = (posts[i].posterUID).toString();
+        }
+        console.log("Getting Foreign Account Data");
+        const PosterInfo = await ClickedForeignAccount(wantedUIDs);
+        console.log("Starting For Loop");
+        for (let i = 0; i < posts.length; i++) {
+            if (posts[i].posterUID === 0) {
+                break;
+            }
+
+            const pDiv = document.createElement("div");
+            const postsDiv = document.getElementById("posts");
+            pDiv.id = "post" + nextPostDivID.toString();
+            pDiv.className = "post";
+
+            pDiv.setAttribute("postID", posts[i].postid.toString());
+            pDiv.setAttribute("posterUID", posts[i].posterUID.toString());
+            pDiv.setAttribute("postDivID", nextPostDivID.toString());
+
+            postsDiv.append(pDiv);
+
+            const posterinfo = document.createElement("div");
+            posterinfo.id = "posterinfo" + nextPostDivID.toString();
+            posterinfo.className = "posterinfo";
+            pDiv.append(posterinfo);
+
+            const posterButton = document.createElement("button");
+            posterButton.className = "posterinfo";
+            posterButton.onclick = handleClickedForeignAccount;
+            posterinfo.append(posterButton);
+
+            const pfpimage = document.createElement("img");
+            pfpimage.width = 64;
+            pfpimage.height = 64;
+            pfpimage.className = "profileimage"
+            try {
+                pfpimage.src = PosterInfo[i].pfp;
+            }
+            catch {
+                pfpimage.src = "https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg";
+            }
+
+            posterButton.append(pfpimage);
+
+            const username = document.createElement("h3");
+            username.className = "postername"
+            username.textContent = PosterInfo[i].username;
+            posterButton.append(username);
+
+            const postDate = document.createElement("h4");
+            postDate.className = "posterdate";
+            const postedDate = getDateDifference(posts[i].datePosted);
+            postDate.textContent = postedDate;
+            posterButton.append(postDate);
+
+            /* Comment Div */
+
+            const commentButton = document.createElement("button");
+            commentButton.className = "rlcbuttons";
+            commentButton.onclick = handleClickedCommentButton;
+            posterButton.append(commentButton);
+
+
+            const commentDiv = document.createElement("div");
+            commentDiv.className = "icondiv";
+            commentButton.append(commentDiv);
+
+            const commentIcon = document.createElement("img");
+            commentIcon.className = "icon";
+            commentIcon.src = "/icons/commenticon.png";
+            commentIcon.width = 16;
+            commentIcon.height = 16;
+            commentDiv.append(commentIcon);
+
+            const postcmtamt = document.createElement("h4");
+            postcmtamt.className = "postcommentamount";
+            postcmtamt.textContent = posts[i].commentAmt.toString();
+            commentDiv.append(postcmtamt);
+
+            /* Like Div */
+
+            const likeButton = document.createElement("button");
+            likeButton.className = "rlcbuttons";
+            likeButton.onclick = handleClickedLikeButton;
+            posterButton.append(likeButton);
+
+            const likeDiv = document.createElement("div");
+            likeDiv.className = "icondiv"
+            likeButton.append(likeDiv);
+
+            const likeIcon = document.createElement("img");
+            likeIcon.className = "icon";
+            likeIcon.src = "/icons/likeicon.png";
+            likeIcon.width = 16;
+            likeIcon.height = 16;
+            likeDiv.append(likeIcon);
+
+            const postlkamt = document.createElement("h4");
+            postlkamt.className = "postlikeamount";
+            postlkamt.textContent = posts[i].likeAmt.toString();
+            likeDiv.append(postlkamt);
+
+            /* Repost Div */
+
+            const repostButton = document.createElement("button");
+            repostButton.className = "rlcbuttons";
+            repostButton.onclick = handleClickedRepostButton;
+            posterButton.append(repostButton);
+
+            const repostDiv = document.createElement("div");
+            repostDiv.className = "icondiv";
+            repostButton.append(repostDiv);
+
+            const repostIcon = document.createElement("img");
+            repostIcon.className = "icon";
+            repostIcon.src = "/icons/reposticon.png";
+            repostIcon.width = 16;
+            repostIcon.height = 16;
+            repostDiv.append(repostIcon);
+
+            const postrpamt = document.createElement("h4");
+            postrpamt.className = "postrepostamount";
+            postrpamt.textContent = posts[i].repostAmt.toString();
+            repostDiv.append(postrpamt);
+
+            /* Post content */
+
+            const postcontent = document.createElement("div");
+            postcontent.id = "postcontent" + nextPostDivID.toString();
+            postcontent.className = "postcontent";
+            pDiv.append(postcontent);
+
+            const pcontenttext = document.createElement("h4");
+            pcontenttext.id = "postcontenttext" + nextPostDivID.toString();
+            pcontenttext.className = "postcontenttext";
+            pcontenttext.textContent = posts[i].postText;
+            postcontent.append(pcontenttext);
+
+            const pcontentimg = document.createElement("img");
+            pcontentimg.src = posts[i].images;
+            pcontentimg.id = "postcontentimg" + nextPostDivID.toString();
+            pcontentimg.className = "postcontentimg"
+            postcontent.append(pcontentimg);
+
+            nextPostDivID++;
+        }
+    }
+
+    const removePosts = async () => {
+
+        let children = document.getElementsByClassName("post");
+        for (let i = 0; i < children.length; i++) {
+            children[i].remove();
+        }
+
+        /* I seriously do not understand why I have to run it twice, the array starts at 0 and loops to the end? So it should work? BUT NO it doesn't */
+
+        children = document.getElementsByClassName("post");
+        for (let i = 0; i < children.length; i++) {
+            children[i].remove();
+        }
+    }
+
+    function getDateDifference(date: string) {
+
+        const dateLocal = new Date();
+        const dateLocalISO = dateLocal.toISOString();
+        console.log("Post time " + date + " Local time: " +dateLocalISO);
+
+        const dateTimeForiegn = date.split("T")
+        
+        const ymdArrayForeign = dateTimeForiegn[0].split("-");
+        const timeArrayForeign = dateTimeForiegn[1].split(":");
+        timeArrayForeign[2] = timeArrayForeign[2].slice(1, 2);
+
+        
+        const dateTimeLocal = dateLocalISO.split("T");      
+        const ymdArrayLocal = dateTimeLocal[0].split("-");
+        const timeArrayLocal = dateTimeLocal[1].split(":");
+        
+        timeArrayLocal[2] = timeArrayLocal[2].slice(0, 2);
+        console.log(timeArrayLocal);
+        let isY = 0;
+
+        if (parseInt(ymdArrayForeign[0]) < parseInt(ymdArrayLocal[0])) {
+
+            const yDiff = parseInt(ymdArrayLocal[0]) - parseInt(ymdArrayForeign[0]);
+
+            if (yDiff > 1) {
+                return yDiff.toString() + "y"
+            }
+            isY = 12;
+        }
+
+        let leapYear = false;
+
+        if (parseInt(ymdArrayLocal[0]) % 4 === 0) {
+            leapYear = true;
+        }
+        if (parseInt(ymdArrayLocal[0]) % 100 === 0) {
+            leapYear = false;
+        }
+        if (parseInt(ymdArrayLocal[0]) % 400 === 0) {
+            leapYear = true;
+        }
+
+        if (parseInt(ymdArrayForeign[1]) < parseInt(ymdArrayLocal[1])) {
+            const mDiff = (parseInt(ymdArrayLocal[1]) + isY) - parseInt(ymdArrayForeign[1]);
+
+            if (mDiff < 2) {
+                let dDiff = 0;
+                const month = parseInt(ymdArrayLocal[1]); 
+
+                if (month === 1 || month === 2 || month === 4 || month === 6 || month === 8 || month === 10) {
+                    dDiff = (parseInt(ymdArrayLocal[2]) + 31) - parseInt(ymdArrayForeign[2]);
+                    return dDiff.toString() + "d";
+                }
+
+                if (month === 3) {
+                    if (leapYear) {
+                        dDiff = (parseInt(ymdArrayLocal[2]) + 29) - parseInt(ymdArrayForeign[2]);
+                    }
+                    else {
+                        dDiff = (parseInt(ymdArrayLocal[2]) + 28) - parseInt(ymdArrayForeign[2]);
+                    }
+                    return dDiff.toString() + "d";
+                }
+
+                if (month === 5 || month === 7 || month === 10 || month === 12) {
+                    dDiff = (parseInt(ymdArrayLocal[2]) + 30) - parseInt(ymdArrayForeign[2]);
+                    return dDiff.toString() + "d";
+                }
+            }
+
+            return mDiff.toString() + "m";
+        }
+
+        console.log("Checking if posted this month. Day Posted: " + ymdArrayForeign[2].toString() + " Today: " + ymdArrayLocal[2].toString());
+        if (parseInt(ymdArrayForeign[2]) < parseInt(ymdArrayLocal[2])) {
+            const dDiff = parseInt(ymdArrayLocal[2]) - parseInt(ymdArrayForeign[2]);
+            return dDiff.toString() + "d";
+        }
+
+        console.log("Posted Today, checking time. " + " Hour Posted: " + timeArrayForeign[0].toString() + " Hour Right Now: " + timeArrayLocal[0].toString());
+        if (parseInt(timeArrayForeign[0]) != parseInt(timeArrayLocal[0])) {
+            const hDiff = (parseInt(timeArrayLocal[0])) - parseInt(timeArrayForeign[0]);
+            return hDiff.toString() + "h";
+        }
+
+        if (parseInt(timeArrayForeign[1]) < parseInt(timeArrayLocal[1])) {
+            const mDiff = (parseInt(timeArrayLocal[1])) - parseInt(timeArrayForeign[1]);
+            return mDiff.toString() + "m";
+        }
+
+        if (parseInt(timeArrayForeign[2]) < parseInt(timeArrayLocal[2])) {
+            const sDiff = (parseInt(timeArrayLocal[2])) - parseInt(timeArrayForeign[2]);
+            return sDiff.toString() + "s";
+        }
+
+    }
+
+
+    /* Parse Comments 
+            JSON Layout:
+                @"{
+                  ""CommentText"": ""Test Comment"",
+                  ""UID"":1,
+                  ""CommentOnCommentID"":0;
+                  ""CommentID"":1,
+                  ""Comments"":[
+                        {
+                        ""CommentText"": ""Test Commment Comment"",
+                        ""UID"":2,
+                        ""CommentOnCommentID"":1;
+                        ""CommentID"":2,
+                        ""Comments"":[
+                            {
+                            ""CommentText"": ""Test Commment Comment Comment"",
+                            ""UID"":3,
+                            ""CommentOnCommentID"":2;
+                            ""CommentID"":4,
+                            ""Comments"":[
+                    
+                             ]
+                            }
+                         ]
+                        },
+                    {
+                        ""CommentText"": ""Test Comment 2"",
+                        ""UID"": 3,
+                        ""CommentOnCommentID"":1;
+                        ""CommentID"":3,
+                        ""Comments"":[
+                        ]
+                    }
+            
+                   ]
+                }";
+
+        Comment Display:
+
+                <div className="commentsDiv" id="commentsDiv">
+                    <div className="commentDiv" commentID=X> posterUID=X commentOnComment=commentID hasReplyButton=true>
+
+                        <div className="commenterDiv">
+                            <img src="" />
+                            <h3>username</h3>
+                        </div>
+                        <div className="commentText">
+                            <h3>text</h3>
+                        </div>
+
+                        <button className="showReplyButton" onClick={showReplies}>Show Replies</button>
+
+                        <div className="commentCommentDiv">
+
+                            <div className="commentDiv" commentID=X> posterUID=X commentOnComment=commentID hasReplyButton=false>
+                                <div className="commenterDiv">
+                                    <img src="" />
+                                    <h3>username</h3>
+                                </div>
+                                <div className="commentBody">
+                                    <h3>text</h3>
+                                </div>
+                                <div className="commentCommentDiv">
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+                </div>
+    */
+
+    const showReplies = () => {
+
+    }
+
+    const getComments = async (postID: string, commentID: string) => {
+
+        const accountToken = localStorage.getItem("sessionid");
+        const accountUID = localStorage.getItem("uid");
+        const postString = accountUID + ":" + accountToken + ":" + postID + ":" + commentID;
+
+        try {
+            const response = await fetch('../api/mimirgetcomments?uidTokenPostIDCommentID=' + postString, {
+                method: "POST"
+            })
+            if (!response.ok) {
+                alert("Clicked Account Response Fail");
+                throw new Error(`HTTP error! status: ${response.status}`)
+            }
+
+            const data: CommentData = await response.json();
+
+            parseComments(data);
+        }
+        catch (err) {
+            console.error('Error setting description: ', err)
+        }
+    }
+    function parseComments(data: CommentData) {
+
+        let commentsToProcess: CommentData[];
+        let uids: number[];
+
+        /* These array will align with the same index as the uid array */
+        let pfps: HTMLElement[];
+        let usernames: HTMLElement[];
+
+        const commentsDiv = document.getElementById("commentsDiv");
+
+        commentsToProcess.push(data);
+        while (commentsToProcess.length > 0) {
+
+            uids.push(commentsToProcess[0].UID);
+
+            const commentDiv = document.createElement("div");
+            commentDiv.className = "commentDiv";
+            commentDiv.setAttribute("commentID", (commentsToProcess[0].CommentID.toString()));
+            commentDiv.setAttribute("posterUID", (commentsToProcess[0].UID.toString()));
+            commentDiv.setAttribute("commentOnComment", (commentsToProcess[0].CommentOnCommentID.toString()));
+            commentDiv.setAttribute("hasReplyButton", "false");
+
+            if (commentsToProcess[0].CommentOnCommentID != 0) {
+                const allComments = document.getElementsByClassName("commentID");
+
+                for (let j = 0; j < allComments.length - 1; j++) {
+                    if (allComments[j].getAttribute("commentId") === commentsToProcess[0].CommentOnCommentID.toString()) {
+
+                        try {
+                            let lastChild = allComments[j].lastElementChild;
+                            lastChild.append(commentDiv);
+
+                            if (allComments[j].getAttribute("hasReplyButton").toString() === "false") {
+                                const seeReplyButton = document.createElement("button");
+                                seeReplyButton.onclick = showReplies;
+                                allComments[j].append(seeReplyButton);
+                                commentDiv.style.display = "hidden";
+                                allComments[j].setAttribute("hasReplyButton", "true");
+                            }
+                        }
+                        catch {
+                            console.error("Could not find comment on comment div");
+                        }
+                    }
+                }
+            }
+            else {
+                commentsDiv.append(commentDiv);
+            }
+
+            const commenterDiv = document.createElement("div");
+            commentDiv.append(commenterDiv);
+
+            const pfp = document.createElement("img");
+            pfps.push(pfp);
+            commenterDiv.append(pfp);
+
+            const username = document.createElement("h3");
+            usernames.push(username);
+            commenterDiv.append(username);
+
+            const commentBody = document.createElement("div");
+            commentBody.className = "commentBody";
+            commentDiv.append(commentBody);
+
+            const commentText = document.createElement("h3");
+            commentText.textContent = commentsToProcess[0].CommentText;
+            commentBody.append(commentText);
+
+            const commentCommentDiv = document.createElement("div");
+            commentCommentDiv.className = "commentCommentDiv";
+            commentDiv.append(commentCommentDiv);
+
+            const replyArray: CommentData[] = commentsToProcess[0].Comments
+            while (replyArray.length > 0) {
+                commentsToProcess.push(replyArray[0]);
+                replyArray.shift();
+            }
+
+            commentsToProcess.shift();
+
+        }
+    }
+
+    const addComment = async (postID: string, commentID: string, commentString: string) => { 
+
+        const accountToken = localStorage.getItem("sessionid");
+        const accountUID = localStorage.getItem("uid");
+        const postString = accountUID + ":" + accountToken + ":" + postID + ":";
+
+        const content = new FormData();
+        content.append("uid", localStorage.getItem("uid"));
+        content.append("token", localStorage.getItem("sessionid"));
+        content.append("postID", postID);
+        content.append("commentID", commentID);
+        content.append("commentText", commentString);
+
+        try {
+            const response = await fetch('../api/mimiraddcomment', {
+                method: "POST",
+                body: content
+            })
+            if (!response.ok) {
+                alert("Clicked Account Response Fail");
+                throw new Error(`HTTP error! status: ${response.status}`)
+            }
+
+            const data: CommentData = await response.json();
+
+            parseComments(data);
+        }
+        catch (err) {
+            console.error('Error setting description: ', err)
+        }
+    }
+
 
   return (
       <main className="main" onLoad={CheckToken}>
@@ -356,7 +931,7 @@ function home() {
                           <button id="editaccountdesc" className="editbutton" onClick={handleEditDescriptionButton}>Add a profile description!</button>
                     </div>
                       <div id="followeramt" className="following">
-                          <h3>Follower</h3>
+                          <h3>Followers</h3>
                           <h3 id="followingnumber" className="following">0</h3>
                     </div>
                       <div id="followingamt" className="following">
@@ -389,15 +964,28 @@ function home() {
                           <img src="https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg" width="64" height="64" className="profileimage" />
                           <h3 className="postername">Username</h3>
                           <h4 className="posterdate">Post Date</h4>
-                          <h4 className="postcommentamount">0</h4>
-                          <h4 className="postlikeamount">0</h4>
-                          <h4 className="postrepostamount">0</h4>
+                          <div className="icondiv">
+                              <img src="/icons/commenticon.png" width="16" height="16" className="icon"/>
+                              <h4 className="postcommentamount">0</h4>
+                          </div>
+                          <div className="icondiv">
+                              <img src="/icons/likeicon.png" width="16" height="16" className="icon" />
+                              <h4 className="postlikeamount">0</h4>
+                          </div>
+                          <div className="icondiv">
+                              <img src="/icons/reposticon.png" width="16" height="16" className="icon" />
+                              <h4 className="postrepostamount">0</h4>
+                          </div>
                       </button>
                   </div>
                   <div id="postcontent" className="postcontent">
                     <h4 id="postcontenttext" className="postcontenttext">Temp</h4>
                     <img src="" id="postcontentimg" className="postcontentimg"/>
                   </div>
+              </div>
+
+              <div>
+                  <button onClick={handleGetPostsButton}>Get Posts</button>
               </div>
 
           </div>

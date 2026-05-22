@@ -134,7 +134,8 @@ body {
 .profilebanner {
     z-index: 1;
     display: flex;
-    margin-top: -5vh;
+    margin-top: -1vh;
+    margin-bottom: -1vh;
     margin-left: -3vw;
     width: 100vw;
     height: 30vh;
@@ -148,7 +149,7 @@ body {
     max-width: 40vw;
     margin-left: 24.5vw;
     display: grid;
-    margin-top: -20vh;
+    margin-top: -25vh;
     grid-template-columns: auto auto auto auto auto auto auto;
     flex: auto;
     
@@ -218,7 +219,7 @@ body {
 .modal {
     display: none;
     position: fixed;
-    z-index: 2;
+    z-index: 5;
     left: 0;
     top: 0;
     width: 100%;
@@ -317,7 +318,7 @@ body {
     border-color: none;
     outline: none;
     border: 0;
-    padding-top: 0.5vh;
+    
 }
 
 .postername {
@@ -357,6 +358,25 @@ body {
     text-align: left;
     display: block;
     padding-left: 5.3vw;
-    margin-top: -3vh;
+    margin-top: -2.5vh;
     color: lightgray;
+}
+
+.icondiv {
+    display: grid;
+    grid-template-columns: auto auto;
+    margin-top: -1.5vh;
+}
+
+.icon {
+    margin-top: 1.75vh;
+    padding-left: 1%;
+}
+
+.rlcbuttons {
+    z-index: 3;
+    border-color: none;
+    outline: none;
+    border: 0;
+    background-color: #392741;
 }

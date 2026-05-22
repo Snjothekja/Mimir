@@ -24,13 +24,14 @@ interface CreateUserFormElement extends HTMLFormElement {
     readonly elements: FormElementsCreateUser
 }
 
+let loginFail = false;
+
 function App() {
   const [error, setError] = useState<string | null>(null)
 
 
     const fetchLoginQuery = async (username: string, password: string) => {
         setError(null)
-
         const userPass = username + ":" + password;
         try {  
             const response = await fetch('api/mimirpostgreslogin?userAndPass=' + userPass.toString(), {
@@ -78,6 +79,45 @@ function App() {
             }
         }
     }
+
+    const checkIfAlreadyLoggedIn = async () => {
+        if (loginFail === false) {
+            loginFail = true;
+        }
+        else {
+            return;
+        }
+        console.log("Checking if already logged in");
+        try {
+            const accountToken = localStorage.getItem("sessionid");
+            const accountUID = localStorage.getItem("uid");
+            if (accountToken === null) {
+                console.log("No token");
+                return;
+            }
+
+            const uidToken = accountUID + ":" + accountToken;
+            console.log(uidToken);
+
+            const response = await fetch('../api/mimirchecktoken?uidToken=' + uidToken, {
+                method: "POST"
+            })
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`)
+            }
+            const data = await response.json();
+            if (data.check === "false") {
+                window.location.assign("index.html");
+            }
+            location.assign("/home/home.html");
+        }
+        catch (err) {
+            console.error('Error loggin in:', err)
+            return;
+        }
+        
+        location.assign("/home/home.html");
+    }
   function handleLoginSubmit(event: React.FormEvent<LoginFormElement>) {
       event.preventDefault()
       fetchLoginQuery(event.currentTarget.elements.usernameInput.value, event.currentTarget.elements.passwordInput.value)
@@ -119,7 +159,7 @@ function App() {
     }
 
   return (
-    <div className="app-container">
+      <div className="app-container" onLoad={checkIfAlreadyLoggedIn}>
       <header className="app-header">
         <a 
           href="https://aspire.dev" 
@@ -133,7 +173,7 @@ function App() {
         <h1 className="app-title">Log In</h1>
       </header>
 
-      <main className="main-content">
+          <main className="main-content">
               <section className="login-section" aria-labelledby="">
                   <button id="loginDivButton" value="loginDiv" onClick={handleButtonEvent}>Login</button>
                   <button id="createUserDivButton" value="createUserDiv" onClick={handleButtonEvent}>New User</button>
