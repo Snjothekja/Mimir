@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 
 
@@ -30,6 +31,16 @@ namespace Mimir.backend.postgres
         {
             public string username { get; set; }
             public string pfp { get; set; }
+        }
+
+        public struct Comments
+        {
+            public string commentText { get; set; }
+            public int uid { get; set; }
+            public int commentOnCommentID { get; set; }
+            public int commentID { get; set; }
+            [JsonExtensionData]
+            public Dictionary<string, JsonElement>? ExtensionData { get; set; }
         }
 
         static public async Task Main()
@@ -159,6 +170,11 @@ namespace Mimir.backend.postgres
         static internal async void AddComment(string uid, string commentText, string postID, string commentOnCommentID)
         {
             await PostgresAddComment.AddComment(int.Parse(uid), commentText, int.Parse(postID), int.Parse(commentOnCommentID));
+        }
+
+        static internal async Task<List<PostgresManager.Comments>> GetComments(int postID)
+        {
+            return await PostgresGetComments.GetComments(postID);
         }
 
         static internal async void AddRepost()

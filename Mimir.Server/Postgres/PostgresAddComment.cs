@@ -1,42 +1,73 @@
 ﻿using Npgsql;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.Design;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Xml.Linq;
+using static Mimir.Server.TestScripts.CommentJSON;
 
 namespace Mimir.backend.postgres
 {
+    /*
+    JSON Layout:
+                @"{
+                  ""CommentText"": ""Test Comment"",
+                  ""UID"":1,
+                  ""CommentOnCommentID"":0,
+                  ""CommentID"":1,
+                  ""Comments"":[
+                        {
+                        ""CommentText"": ""Test Commment Comment"",
+                        ""UID"":2,
+                        ""CommentOnCommentID"":1,
+                        ""CommentID"":2,
+                        ""Comments"":[
+                            {
+                            ""CommentText"": ""Test Commment Comment Comment"",
+                            ""UID"":3,
+                            ""CommentOnCommentID"":2,
+                            ""CommentID"":4,
+                            ""Comments"":[
+                    
+                             ]
+                            }
+                         ]
+                        },
+                    {
+                        ""CommentText"": ""Test Comment 2"",
+                        ""UID"": 3,
+                        ""CommentOnCommentID"":1,
+                        ""CommentID"":3,
+                        ""Comments"":[
+                        ]
+                    }
+            
+                   ]
+                }";
+    */
 
-    /* {
-          id:
-          [
-          {"commentText":"", "uid":uid}
-           "comments":
-           [
-             {"commentText":"", "uid":uid}
-           ]
-          ]
-        
-        
-         }
-        */
-
-    internal class Comments
+    public class Comments
     {
-        internal int ID { get; set; }
-        internal string CommentText { get; set; }
-        internal int UID { get; set; }
+        public string commentText { get; set; }
+        public int uid { get; set; }
+        public int commentOnCommentID { get; set; }
+        public int commentID { get; set; }
+        [JsonExtensionData]
+        public Dictionary<string, JsonElement>? ExtensionData { get; set; }
     }
 
 
     internal class PostgresAddComment
     {
 
-        public static async Task AddComment(int uid, string text, int postID, int commentCommentID)
+        public static async Task AddComment(int uid, string text, int postID, int wantedCommentID)
         {
             await using var conn = new NpgsqlConnection(GetPostgres.GetPostgresSettings());
             await conn.OpenAsync();
 
-            await using var command = new NpgsqlCommand("SELECT (comments, commentAmt) FROM public.posts WHERE postid = ($1)", conn)
+            using var command = new NpgsqlCommand("SELECT commentsreplies, commentamt FROM public.posts WHERE postid=($1)", conn)
             {
                 Parameters =
                 {
@@ -45,16 +76,14 @@ namespace Mimir.backend.postgres
             };
 
             string _currentCommentString = "";
-            string[] _commentArray = new string[0];
             int _commentCount = 0;
-            int _commentId = 0;
 
-            using var reader = command.ExecuteReader();
+            var reader = command.ExecuteReader();
 
             while (reader.Read())
             {
-                _currentCommentString = reader.GetString(0);
-                _commentCount = reader.GetInt32(1);
+                _currentCommentString = (string)reader.GetValue(0);
+                _commentCount = (int)reader.GetValue(1);
             }
 
             while (reader.IsClosed == false)
@@ -63,40 +92,78 @@ namespace Mimir.backend.postgres
             }
 
             Console.WriteLine(_currentCommentString + " " + _commentCount);
-            return;
             // Update For JSON
 
-            _commentArray = _currentCommentString.Split(';');
+            string _startString = "";
+            string _endString = "";
+            
+            if (wantedCommentID != 0) 
+            {
+                string indexToFind = @$"""commentID"": {wantedCommentID}";
+                //Console.WriteLine(indexToFind);
+                int commentsIndex = _currentCommentString.IndexOf(indexToFind);
+                //Console.WriteLine("Index: " + commentsIndex.ToString());
+                commentsIndex = commentsIndex + 27 + wantedCommentID.ToString().Length;
+                _startString = _currentCommentString.Substring(0, commentsIndex);
+                Console.WriteLine("Start String: " + _startString);
+                _endString = _currentCommentString.Substring(commentsIndex);
+                Console.WriteLine("End String: " + _endString);
+            }
+            else
+            {
+                _startString = _currentCommentString.Substring(0, 1);
+                _endString = _currentCommentString.Substring(1);
+            }
 
-            _commentId = Int32.Parse((_commentArray[_commentArray.Length - 1].Split(",")).ElementAt(3)) + 1;
+            Comments newCommentJSON = new Comments
+            {
+                commentText = text,
+                uid = uid,
+                commentOnCommentID = wantedCommentID,
+                commentID = _commentCount + 1
+            };
+            
+            var _serializeOptions = new JsonSerializerOptions { WriteIndented = true };
+            string _newCommentString = JsonSerializer.Serialize(newCommentJSON, _serializeOptions);
 
-            string _commmentArrayPart = $"{uid},{_commentId},{text},{commentCommentID};";
+            string _indexString = @"""commentID"": " + (_commentCount + 1).ToString();
 
-            _currentCommentString += _commmentArrayPart;
+            int _index = _newCommentString.IndexOf(_indexString);
+            _index = _index + 14 + (_commentCount + 1).ToString().Length;
+            string[] _newCommentArray = { _newCommentString.Substring(0, _index), _newCommentString.Substring(_index) };
 
-            await using var command2 = new NpgsqlCommand("UPDATE public.posts SET (comments = ($1), commentamt = ($2)) WHERE postid = ($3)", conn)
+            string _addedCommentsSection = @",""comments"":[ ]";
+            Console.WriteLine("Comment Array 0: " + _newCommentArray[0]);
+            Console.WriteLine("Comment Array 1: " + _newCommentArray[1]);
+
+            if (_currentCommentString.Contains("{"))
+            {
+                _newCommentString = _newCommentArray[0] + _addedCommentsSection + _newCommentArray[1] + ",";
+            }
+
+            else
+            {
+                _newCommentString = _newCommentArray[0] + _addedCommentsSection + _newCommentArray[1];
+            }
+
+            string _finishedJsonString = _startString + _newCommentString + _endString;
+            int _commentCountInt = _commentCount + 1;
+
+            Console.WriteLine(_finishedJsonString);
+
+            using var command2 = new NpgsqlCommand("UPDATE public.posts SET commentsreplies=($1), commentamt=($2) WHERE postid=($3)", conn)
             {
                 Parameters =
                 {
-                    new () { Value = _currentCommentString },
-                    new NpgsqlParameter() { Value = _commentId },
+                    new NpgsqlParameter() { Value = _finishedJsonString },
+                    new NpgsqlParameter() { Value = _commentCountInt },
                     new () { Value = postID }
                 }
             };
 
-            await command.ExecuteNonQueryAsync();
-
+            await command2.ExecuteNonQueryAsync();
             await conn.CloseAsync();
         }
 
-        private string EncodeJSON()
-        {
-            return "";
-        }
-
-        private string DecodeJSON()
-        {
-            return "";
-        }
     }
 }

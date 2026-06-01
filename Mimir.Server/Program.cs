@@ -6,6 +6,8 @@ using Mimir.Server.TestScripts;
 using Npgsql;
 using System.Reflection.Metadata;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using static Mimir.backend.postgres.PostgresManager;
 using static System.Net.Mime.MediaTypeNames;
 
@@ -167,20 +169,27 @@ app.MapPost("api/mimirlikepost", async (string tokenuidpostid) =>
 
 }).WithName("LikePost");
 
-app.MapPost("api/mimirgetcomments", async (string uidTokenPostIDCommentID) =>
-{
-
-}).WithName("GetComments");
-
 app.MapPost("api/mimiraddcomment", async ([FromForm] string uid, [FromForm] string token, [FromForm] string postID, [FromForm] string commentID, [FromForm] string commentText) =>
 {
-    bool validToken = CheckToken.CheckUserToken(token, int.Parse(uid));
-    if (!validToken)
-    {
-        return;
-    }
+    //bool validToken = CheckToken.CheckUserToken(token, int.Parse(uid));
+    //if (!validToken)
+    //{
+    //    return;
+    //}
     PostgresManager.AddComment(uid, commentText, postID, commentID);
-}).WithName("AddComment");
+}).WithName("AddComment").DisableAntiforgery();
+
+app.MapPost("api/mimirgetcomments", async (int postID) =>
+{
+    var values = await PostgresManager.GetComments(postID);
+    try
+    {
+        Console.WriteLine(values[0].commentText);
+    }
+    catch { Console.WriteLine("Its null"); }
+    
+    return values;
+}).WithName("GetComments").DisableAntiforgery();
 
 // Test Endpoints Remove if released
 

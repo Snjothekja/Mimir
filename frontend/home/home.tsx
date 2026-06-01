@@ -32,17 +32,19 @@ function home() {
     }
 
     interface CommentData {
-        CommentText: string;
-        UID: number;
-        CommentID: number;
-        CommentOnCommentID: number;
-        Comments: object;
+        commentText: string;
+        uid: number;
+        commentOnCommentID: number;
+        commentID: number;
+        comments: CommentData[];
     }
 
     let setFilePFP: File;
     let setFileBanner: File;
     const lastDate = new Date();
     let postImage: File;
+    let setPostID: number;
+    let setCommentOnCommentID: number;
 
     let nextPostDivID = 0;
 
@@ -170,12 +172,12 @@ function home() {
         ClickedAccount();
     }
 
-    const ClickedForeignAccount = async (uid: string[]) => {
+    const GetForeignAccounts = async (uid: string[]) => {
 
         let uids: string;
-        uids = uid[0];
+        uids = uid[0].toString();
         for (let i = 1; i < uid.length; i++) {
-            uids += ":" + uid[i];
+            uids += ":" + uid[i].toString();
         }
         
         try {
@@ -331,10 +333,7 @@ function home() {
     function handleClickedLikeButton() {
         console.log("Clicked Like Button");
     }
-    function handleClickedRepostButton() {
-    }
-    function handleClickedCommentButton() {
-    }
+ 
 
     /* Post Functions (reposting, liking, commenting) */
 
@@ -375,6 +374,14 @@ function home() {
         if (event.target == newpost) {
             newpost.style.display = "none";
         }
+        const reply = document.getElementById("reply");
+        if (event.target == reply) {
+            reply.style.display = "none";
+        }
+        const addComment = document.getElementById("addcomment");
+        if (event.target == addComment) {
+            addComment.style.display = "none";
+        }
     }
 
     const getPosts = async () => {
@@ -413,7 +420,7 @@ function home() {
             wantedUIDs[i] = (posts[i].posterUID).toString();
         }
         console.log("Getting Foreign Account Data");
-        const PosterInfo = await ClickedForeignAccount(wantedUIDs);
+        const PosterInfo = await GetForeignAccounts(wantedUIDs);
         console.log("Starting For Loop");
         for (let i = 0; i < posts.length; i++) {
             if (posts[i].posterUID === 0) {
@@ -469,8 +476,8 @@ function home() {
 
             const commentButton = document.createElement("button");
             commentButton.className = "rlcbuttons";
-            commentButton.onclick = handleClickedCommentButton;
-            posterButton.append(commentButton);
+            commentButton.onclick = handleClickedCommentButton.bind(this, posts[i].postid, posts[i].commentAmt);
+            posterinfo.append(commentButton);
 
 
             const commentDiv = document.createElement("div");
@@ -494,7 +501,7 @@ function home() {
             const likeButton = document.createElement("button");
             likeButton.className = "rlcbuttons";
             likeButton.onclick = handleClickedLikeButton;
-            posterButton.append(likeButton);
+            posterinfo.append(likeButton);
 
             const likeDiv = document.createElement("div");
             likeDiv.className = "icondiv"
@@ -516,8 +523,8 @@ function home() {
 
             const repostButton = document.createElement("button");
             repostButton.className = "rlcbuttons";
-            repostButton.onclick = handleClickedRepostButton;
-            posterButton.append(repostButton);
+            repostButton.onclick = handleClickedRepostButton.bind(this, posts[i].postid.toString());
+            posterinfo.append(repostButton);
 
             const repostDiv = document.createElement("div");
             repostDiv.className = "icondiv";
@@ -744,92 +751,80 @@ function home() {
                 </div>
     */
 
-    const showReplies = () => {
+    // Comments and Replies
 
-    }
+    async function parseComments(data: CommentData[]) {
 
-    const getComments = async (postID: string, commentID: string) => {
+        removeComments();
 
-        const accountToken = localStorage.getItem("sessionid");
-        const accountUID = localStorage.getItem("uid");
-        const postString = accountUID + ":" + accountToken + ":" + postID + ":" + commentID;
+        if (data[0].commentText === undefined) {
+            const addCommentReplyButton = document.createElement("button");
+            addCommentReplyButton.className = "replyButton";
+            addCommentReplyButton.textContent = "Add Comment";
 
-        try {
-            const response = await fetch('../api/mimirgetcomments?uidTokenPostIDCommentID=' + postString, {
-                method: "POST"
-            })
-            if (!response.ok) {
-                alert("Clicked Account Response Fail");
-                throw new Error(`HTTP error! status: ${response.status}`)
-            }
-
-            const data: CommentData = await response.json();
-
-            parseComments(data);
+            addCommentReplyButton.onclick = openAddCommentButton.bind(this, 0);
+            const commentsDiv = document.getElementById("commentsDiv");
+            commentsDiv.append(addCommentReplyButton);
+            return;
         }
-        catch (err) {
-            console.error('Error setting description: ', err)
-        }
-    }
-    function parseComments(data: CommentData) {
 
-        let commentsToProcess: CommentData[];
-        let uids: number[];
+        const commentsToProcess = data;
+        const uids = [];
 
         /* These array will align with the same index as the uid array */
-        let pfps: HTMLElement[];
-        let usernames: HTMLElement[];
+        const pfps = [];
+        const usernames = [];
 
         const commentsDiv = document.getElementById("commentsDiv");
-
-        commentsToProcess.push(data);
         while (commentsToProcess.length > 0) {
 
-            uids.push(commentsToProcess[0].UID);
-
+            uids.push(commentsToProcess[0].uid);
+            console.log("UID: " + commentsToProcess[0].uid);
             const commentDiv = document.createElement("div");
-            commentDiv.className = "commentDiv";
-            commentDiv.setAttribute("commentID", (commentsToProcess[0].CommentID.toString()));
-            commentDiv.setAttribute("posterUID", (commentsToProcess[0].UID.toString()));
-            commentDiv.setAttribute("commentOnComment", (commentsToProcess[0].CommentOnCommentID.toString()));
+            commentDiv.className = "comment";
+            commentDiv.setAttribute("commentID", (commentsToProcess[0].commentID.toString()));
+            commentDiv.setAttribute("posterUID", (commentsToProcess[0].uid.toString()));
+            commentDiv.setAttribute("commentOnComment", (commentsToProcess[0].commentOnCommentID.toString()));
             commentDiv.setAttribute("hasReplyButton", "false");
 
-            if (commentsToProcess[0].CommentOnCommentID != 0) {
-                const allComments = document.getElementsByClassName("commentID");
+            if (commentsToProcess[0].commentOnCommentID === 0) {
+                commentsDiv.append(commentDiv);
+            }
+            else {
+                const comments = document.getElementsByClassName("comment");
+                for (let i = 0; i < comments.length; i++) {
 
-                for (let j = 0; j < allComments.length - 1; j++) {
-                    if (allComments[j].getAttribute("commentId") === commentsToProcess[0].CommentOnCommentID.toString()) {
+                    if (comments[i].getAttribute("commentID") == commentsToProcess[0].commentOnCommentID.toString()) {
+                        const commentChildren = comments[i].children;
 
-                        try {
-                            let lastChild = allComments[j].lastElementChild;
-                            lastChild.append(commentDiv);
+                        for (let j = 0; j < commentChildren.length; j++) {
 
-                            if (allComments[j].getAttribute("hasReplyButton").toString() === "false") {
-                                const seeReplyButton = document.createElement("button");
-                                seeReplyButton.onclick = showReplies;
-                                allComments[j].append(seeReplyButton);
-                                commentDiv.style.display = "hidden";
-                                allComments[j].setAttribute("hasReplyButton", "true");
+                            if (commentChildren[j].className === "commentCommentDiv") {
+                                commentChildren[j].append(commentDiv);
+                                commentDiv.style.display = "none";
+                                break;
                             }
                         }
-                        catch {
-                            console.error("Could not find comment on comment div");
-                        }
+                        break;
                     }
                 }
             }
-            else {
-                commentsDiv.append(commentDiv);
-            }
+            
 
             const commenterDiv = document.createElement("div");
+            commenterDiv.className = "commenterInfo";
             commentDiv.append(commenterDiv);
+
 
             const pfp = document.createElement("img");
             pfps.push(pfp);
+            pfp.className = "commenterPFP";
+            pfp.width = 64;
+            pfp.height = 64;
             commenterDiv.append(pfp);
 
-            const username = document.createElement("h3");
+            const username = document.createElement("h3")
+            username.className = "commenterName";
             usernames.push(username);
             commenterDiv.append(username);
 
@@ -838,35 +833,62 @@ function home() {
             commentDiv.append(commentBody);
 
             const commentText = document.createElement("h3");
-            commentText.textContent = commentsToProcess[0].CommentText;
+            commentText.textContent = commentsToProcess[0].commentText;
             commentBody.append(commentText);
+
+            const addCommentReplyButton = document.createElement("button");
+            addCommentReplyButton.className = "replyButton";
+            addCommentReplyButton.textContent = "Add Reply";
+            addCommentReplyButton.onclick = openAddCommentButton.bind(this, commentsToProcess[0].commentID.toString());
+            commentDiv.append(addCommentReplyButton);
+
+            try {
+                const checkReplies: CommentData[] = commentsToProcess[0].comments
+                if (checkReplies[0].commentText != undefined) {
+                    const replyButton = document.createElement("button");
+                    replyButton.className = "replyButton";
+                    replyButton.textContent = "Show Replies"
+                    replyButton.onclick = showReplies.bind(this, replyButton, commentsToProcess[0].commentID.toString());
+
+                    commentDiv.append(replyButton);
+                }
+            }
+            catch {
+                console.log("No replies");
+            }
 
             const commentCommentDiv = document.createElement("div");
             commentCommentDiv.className = "commentCommentDiv";
             commentDiv.append(commentCommentDiv);
-
-            const replyArray: CommentData[] = commentsToProcess[0].Comments
-            while (replyArray.length > 0) {
-                commentsToProcess.push(replyArray[0]);
-                replyArray.shift();
+            
+            const replyArray: CommentData[] = commentsToProcess[0].comments
+            if (replyArray != undefined) {
+                for (let i = 0; i < replyArray.length; i++) {
+                    commentsToProcess.push(replyArray[i]);
+                }    
             }
+
 
             commentsToProcess.shift();
 
         }
+
+        const foreignAccounts: ForeignAccountInfo[] = await GetForeignAccounts(uids);
+        for (let i = 0; i < pfps.length; i++) {
+            pfps[i].src = foreignAccounts[i].pfp;
+        }
+        for (let i = 0; i < usernames.length; i++) {
+            usernames[i].textContent = foreignAccounts[i].username;
+        }
     }
 
-    const addComment = async (postID: string, commentID: string, commentString: string) => { 
-
-        const accountToken = localStorage.getItem("sessionid");
-        const accountUID = localStorage.getItem("uid");
-        const postString = accountUID + ":" + accountToken + ":" + postID + ":";
-
+    const addComment = async (commentString: string) => { 
+        
         const content = new FormData();
         content.append("uid", localStorage.getItem("uid"));
         content.append("token", localStorage.getItem("sessionid"));
-        content.append("postID", postID);
-        content.append("commentID", commentID);
+        content.append("postID", setPostID.toString());
+        content.append("commentID", setCommentOnCommentID.toString());
         content.append("commentText", commentString);
 
         try {
@@ -879,14 +901,98 @@ function home() {
                 throw new Error(`HTTP error! status: ${response.status}`)
             }
 
-            const data: CommentData = await response.json();
-
-            parseComments(data);
+            
         }
         catch (err) {
             console.error('Error setting description: ', err)
         }
     }
+
+    
+    function removeComments() {
+        const commentsDiv = document.getElementById("commentsDiv");
+        const allComments = commentsDiv.children;
+        for (let i = 0; i < allComments.length; i++) {
+            allComments[i].remove();
+        }
+    }
+   
+
+    const showComments = (postid: number) => {
+
+        // document.getElementById("reply").style.display = "flex";
+        getComments(postid);
+    }
+
+    const getComments = async (postID: number) => {
+        setPostID = postID;
+        try {
+            const response = await fetch('../api/mimirgetcomments?postID=' + postID.toString(), {
+                method: "POST",
+            })
+            if (!response.ok) {
+                alert("Clicked Account Response Fail");
+                throw new Error(`HTTP error! status: ${response.status}`)
+            }
+
+            const data: CommentData[] = await response.json();
+            
+            console.log(data[0].commentText);
+            parseComments(data);
+            const replyDiv = document.getElementById("reply");;
+            replyDiv.style.display = "block";
+        }
+        catch (err) {
+            console.error('Error setting description: ', err)
+        }
+    }
+
+    function showReplies(button: HTMLElement, commentID: string) {
+        // console.log("Getting Replies from: " + commentID + " Button Element: " + button.className);
+        const elements = document.querySelectorAll<HTMLElement>("*");
+        for (let i = 0; i < elements.length; i++) {
+            if (elements[i].getAttribute("commentOnComment") === commentID.toString()) {
+                elements[i].style.display = "block";
+                const parentDiv = elements[i].parentElement.parentElement;
+                parentDiv.style.paddingBottom = "15vh";
+                button.style.display = "none";
+                break;
+            }
+        }
+    }
+
+    function handleClickedRepostButton(postID: number) {
+        
+        
+    }
+    function handleClickedCommentButton(postID: number, amtComments: number) {
+        console.log("Amount Comments: " + amtComments.toString());
+        removeComments();
+        if (amtComments === 0) {
+            setPostID = postID;
+            openAddCommentButton(0);
+        }
+        else {
+            showComments(postID)
+        }   
+    }
+
+    function handleClickedAddCommentButton(event: React.FormEvent<HTMLFormElement>) {
+        if (event.currentTarget.commenttextarea.value === undefined) { return; }
+        if (event.currentTarget.commenttextarea.value === "") { return; }
+        addComment(event.currentTarget.commenttextarea.value);
+    }
+
+    function openAddCommentButton(commentOnCommentID: number) {
+        setCommentOnCommentID = commentOnCommentID;
+        console.log("Current Comment On Comment ID: " + setCommentOnCommentID.toString());
+        let element = document.getElementById("reply");
+        element.style.display = "none";
+        element = document.getElementById("addcomment");
+        element.style.display = "block";
+
+    }
+
 
 
   return (
@@ -955,7 +1061,6 @@ function home() {
 
           </div>
 
-
           <div id="testdivs">
 
               <div id="posttest" className="post">
@@ -964,18 +1069,18 @@ function home() {
                           <img src="https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg" width="64" height="64" className="profileimage" />
                           <h3 className="postername">Username</h3>
                           <h4 className="posterdate">Post Date</h4>
-                          <div className="icondiv">
+                          <button className="icondiv" onClick={showReplies}>
                               <img src="/icons/commenticon.png" width="16" height="16" className="icon"/>
                               <h4 className="postcommentamount">0</h4>
-                          </div>
-                          <div className="icondiv">
+                          </button>
+                          <button className="icondiv">
                               <img src="/icons/likeicon.png" width="16" height="16" className="icon" />
                               <h4 className="postlikeamount">0</h4>
-                          </div>
-                          <div className="icondiv">
+                          </button>
+                          <button className="icondiv">
                               <img src="/icons/reposticon.png" width="16" height="16" className="icon" />
                               <h4 className="postrepostamount">0</h4>
-                          </div>
+                          </button>
                       </button>
                   </div>
                   <div id="postcontent" className="postcontent">
@@ -986,6 +1091,10 @@ function home() {
 
               <div>
                   <button onClick={handleGetPostsButton}>Get Posts</button>
+              </div>
+
+              <div>
+                  <button onClick={showComments.bind(this, 7)}>Show Replies</button>
               </div>
 
           </div>
@@ -1037,6 +1146,34 @@ function home() {
                               spellCheck="true"
                           />
                           <input type="file" onChange={onFileChangePostImage} accept="image/jpeg, image/png" className="fileuploadfield" />
+                          <button type="submit" className="modalbutton">Submit</button>
+                      </form>
+                  </div>
+              </div>
+
+              <div id="reply" className="modal">
+                  <div className="modalcontent">
+                      
+                      <div id="commentsDiv">
+                      </div>
+                      <button className="replyButton" onClick={openAddCommentButton.bind(this, 0)}>Add Comment</button>
+                  </div>
+              </div>
+
+              <div id="addcomment" className="modal">
+                  <div className="modalcontent">
+                      <form id="addcommentform" onSubmit={handleClickedAddCommentButton}>
+                          <textarea
+                              form="addcommentform"
+                              id="commenttextarea"
+                              placeholder="Add your comment here!"
+                              className="inputfield"
+                              maxLength={500}
+                              rows={10}
+                              cols={40}
+                              autoCorrect="on"
+                              spellCheck="true"
+                          />
                           <button type="submit" className="modalbutton">Submit</button>
                       </form>
                   </div>

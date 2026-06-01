@@ -91,7 +91,7 @@ namespace Mimir.Server.TestScripts
             var serializeOptions = new JsonSerializerOptions { WriteIndented = true };
             jsonString = JsonSerializer.Serialize(comments, serializeOptions);
 
-            string indexToFind = @$"""PostID"": {postIndex.ToString()}";
+            string indexToFind = @$"""CommentID"": {postIndex.ToString()}";
             Console.WriteLine(indexToFind);
             int commentsIndex = jsonString.IndexOf(indexToFind);
             Console.WriteLine("Index: " + commentsIndex.ToString());

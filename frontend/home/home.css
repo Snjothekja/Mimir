@@ -233,6 +233,7 @@ body {
     width: 20%;
     height: 20%;
     display: flex;
+
 }
 
 .modalbutton {
@@ -309,6 +310,7 @@ body {
     width: 40vw;
     margin-left: 23vw;
     margin-top: 1vh;
+
 }
 
 .posterinfo {
@@ -365,7 +367,10 @@ body {
 .icondiv {
     display: grid;
     grid-template-columns: auto auto;
-    margin-top: -1.5vh;
+    outline: none;
+    border-color: none;
+    background-color: #392741;
+    border: 0;
 }
 
 .icon {
@@ -380,3 +385,65 @@ body {
     border: 0;
     background-color: #392741;
 }
+
+/* Comments */
+
+.commentsDiv {
+    background-color: #493153;
+    width: 40vw;
+    display: flex;
+    height: 100%;
+    box-shadow: 0 0 0 max(100vh, 100vw) rgba(0, 0, 0, .05);
+}
+
+.comment {
+    width: 40vw;
+    background-color: #493153;
+    margin-left: -7.5vw;
+    margin-top: 1vh;
+    
+    height: 100%;
+    
+}
+
+.commenterInfo {
+    display: grid;
+    grid-template-columns: auto auto;
+    background-color: #493153;
+}
+
+.commenterPFP {
+    margin-left: 1vw;
+    margin-top: 10px;
+    border-radius: 50%;
+}
+
+.commenterName {
+    text-align: left;
+    color: white;
+    margin-top: 3vh;
+    margin-left: -17vw;
+    margin-right: 1vw;
+}
+
+.commentBody {
+    background-color: #493153;
+    margin-left: 1vw;
+}
+
+.commentCommentDiv {
+    margin-left: 10vw;
+    box-sizing: border-box;
+    display: flex;
+    
+}
+
+.replyButton {
+    float: right;
+    color: white;
+    background-color: #493153;
+    outline: none;
+    border-color: none;
+    border: 0;
+}
+

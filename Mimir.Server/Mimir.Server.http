@@ -37,3 +37,17 @@ GET {{Mimir.Server_HostAddress}}/api/mimirtestscripts
 POST {{Mimir.Server_HostAddress}}/api/mimirchecktoken?uidToken={{uidToken}}
 
 ###
+
+@uid=12
+@token=AujonExZHxSEuynrOhzzu1jsBYf4UNVyG
+@postID=7
+@commentID=3
+@commentText=Test Comment
+POST {{Mimir.Server_HostAddress}}/api/mimiraddcomment?uid={{uid}}&token={{token}}&postID={{postID}}&commentID={{commentID}}&commentText={{commentText}}
+
+###
+
+@postID=6
+POST {{Mimir.Server_HostAddress}}/api/mimirgetcomments?postID={{postID}}
+
+
