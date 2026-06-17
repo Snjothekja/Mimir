@@ -96,7 +96,7 @@ namespace Mimir.backend.postgres
 
             await conn.CloseAsync();
 
-            byte[] derivedKey = Rfc2898DeriveBytes.Pbkdf2(password, _salt, 500000, HashAlgorithmName.SHA3_512, 64);
+            byte[] derivedKey = Rfc2898DeriveBytes.Pbkdf2(password, _salt, 500000, HashAlgorithmName.SHA3_512, 128);
 
             string _derivedKeyString = "";
             foreach(byte b in derivedKey)

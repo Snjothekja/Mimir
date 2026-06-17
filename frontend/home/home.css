@@ -110,6 +110,7 @@
     width: 100vw;
     padding-left: 170px;
     border-left: 10px;
+    overflow-y: auto;
 }
 
 /* On smaller screens, where height is less than 450px, change the style of the sidebar (less padding and a smaller font size) */
@@ -130,6 +131,33 @@ body {
 }
 
 
+.startnone{
+    display: none;
+}
+
+
+/* Sidebar Tabs */
+.account {
+    position: relative;
+    z-index: 2;
+    min-width: 40vw;
+    max-width: 40vw;
+    margin-left: 24.5vw;
+    display: grid;
+    margin-top: -25vh;
+    margin-bottom: 15vh;
+    grid-template-columns: auto auto auto auto auto auto auto;
+    flex: auto;
+    
+}
+
+.home {
+    background-color: #855399;
+    z-index: 1;
+    width: 100vw;
+    height: 20vh;
+    margin-left: -3vw;
+}
 
 .profilebanner {
     z-index: 1;
@@ -140,19 +168,6 @@ body {
     width: 100vw;
     height: 30vh;
     margin-right: -45vw;
-}
-
-.account {
-    position: absolute;
-    z-index: 2;
-    min-width: 40vw;
-    max-width: 40vw;
-    margin-left: 24.5vw;
-    display: grid;
-    margin-top: -25vh;
-    grid-template-columns: auto auto auto auto auto auto auto;
-    flex: auto;
-    
 }
 
 .profileimage {
@@ -310,7 +325,6 @@ body {
     width: 40vw;
     margin-left: 23vw;
     margin-top: 1vh;
-
 }
 
 .posterinfo {
@@ -354,6 +368,9 @@ body {
 }
 
 .postcontentimg {
+    max-height: 40vw;
+    max-width: 20vh;
+    margin: auto;
 }
 
 .postcontenttext {
@@ -391,9 +408,12 @@ body {
 .commentsDiv {
     background-color: #493153;
     width: 40vw;
-    display: flex;
+    display: grid;
+    
     height: 100%;
     box-shadow: 0 0 0 max(100vh, 100vw) rgba(0, 0, 0, .05);
+    
+
 }
 
 .comment {
@@ -401,9 +421,10 @@ body {
     background-color: #493153;
     margin-left: -7.5vw;
     margin-top: 1vh;
-    
     height: 100%;
-    
+    border-top: solid;
+    border-top-width: 2px;
+    border-top-color: #422c4b;
 }
 
 .commenterInfo {
@@ -429,13 +450,15 @@ body {
 .commentBody {
     background-color: #493153;
     margin-left: 1vw;
+
 }
 
 .commentCommentDiv {
     margin-left: 10vw;
     box-sizing: border-box;
     display: flex;
-    
+    margin-top: 5vh;
+    width: 100%;
 }
 
 .replyButton {

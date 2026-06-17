@@ -16,7 +16,7 @@ namespace Mimir.backend.postgres
 
             Console.WriteLine("Adding: " + postText + " With Image: " + imagePath + " For User: " + uid.ToString());
 
-            await using var command = new NpgsqlCommand("INSERT INTO public.posts (ptext, images, posteruid, postdate, likes reposts, likeamt, commentamt, repostamt, commentsreplies) VALUES (($1), ($2), ($3), ($4), ($6), ($6), ($5), ($5), ($5), ($7))", conn)
+            await using var command = new NpgsqlCommand("INSERT INTO public.posts (ptext, images, posteruid, postdate, likes, reposts, likeamt, commentamt, repostamt, commentsreplies) VALUES (($1), ($2), ($3), ($4), ($6), ($6), ($5), ($5), ($5), ($7))", conn)
             {
                 Parameters =
                 {

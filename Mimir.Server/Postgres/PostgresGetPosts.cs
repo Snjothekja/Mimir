@@ -45,6 +45,8 @@ namespace Mimir.Server.Postgres
                             posterUID = reader.GetFieldValue<int>(1),
                             postText = reader.GetFieldValue<string>(2),
                             images = reader.GetFieldValue<string>(3),
+                            likes = reader.GetFieldValue<string>(4),
+                            reposts = reader.GetFieldValue<string>(5),
                             likeAmt = reader.GetFieldValue<int>(7),
                             repostAmt = reader.GetFieldValue<int>(8),
                             commentAmt = reader.GetFieldValue<int>(9),

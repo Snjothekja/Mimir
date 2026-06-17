@@ -9,6 +9,8 @@ function home() {
         posterUID: number;
         postText?: string;
         images?: string;
+        likes: string;
+        reposts: string;
         likeAmt?: number;
         repostAmt?: number;
         commentAmt?: number;
@@ -39,14 +41,18 @@ function home() {
         comments: CommentData[];
     }
 
+    interface boolReturn {
+        returnvalue: boolean;
+    }
+
     let setFilePFP: File;
     let setFileBanner: File;
     const lastDate = new Date();
-    let postImage: File;
     let setPostID: number;
     let setCommentOnCommentID: number;
 
     let nextPostDivID = 0;
+    let firstLoad = true;
 
     const onFileChangePFP = (event) => {
         setFilePFP = event.target.files[0];
@@ -56,11 +62,17 @@ function home() {
         setFileBanner = event.target.files[0];
     }
 
-    const onFileChangePostImage = (event) => {
-        postImage = event.target.files[0];
+
+    const StartScript = async () => {
+        await CheckToken();
+
+        if (firstLoad) {
+            getHomePosts();
+            firstLoad = false;
+        }
     }
 
-    const CheckToken = async () => {
+    async function CheckToken() {
         try {
             const accountToken = localStorage.getItem("sessionid");
             const accountUID = localStorage.getItem("uid");
@@ -86,17 +98,41 @@ function home() {
             console.error('Error loggin in:', err)
             window.location.assign("index.html");
         }
-        
     }
     function ClickedHome() {
+        const homeDiv = document.getElementById("home");
+        homeDiv.style.display = "block";
 
+        const feedsDiv = document.getElementById("feeds");
+        feedsDiv.style.display = "none";
+
+        const accountDiv = document.getElementById("account");
+        accountDiv.style.display = "none";
+        getHomePosts()
     }
 
     function ClickedFeeds() {
+        const homeDiv = document.getElementById("home");
+        homeDiv.style.display = "none";
 
+        const feedsDiv = document.getElementById("feeds");
+        feedsDiv.style.display = "block";
+
+        const accountDiv = document.getElementById("account");
+        accountDiv.style.display = "none";
     }
 
     const ClickedAccount = async () => {
+
+        const homeDiv = document.getElementById("home");
+        homeDiv.style.display = "none";
+
+        const feedsDiv = document.getElementById("feeds");
+        feedsDiv.style.display = "none";
+
+        const accountDiv = document.getElementById("account");
+        accountDiv.style.display = "block";
+
         const accountToken = localStorage.getItem("sessionid");
         const accountUID = localStorage.getItem("uid");
         const uidToken = accountUID + ":" + accountToken;
@@ -148,13 +184,24 @@ function home() {
 
     }
 
-    const SubmitNewPost = async(postText: string) => {
+    function ClickedForeignAccount() {
+        const homeDiv = document.getElementById("home");
+        homeDiv.style.display = "none";
+
+        const feedsDiv = document.getElementById("feeds");
+        feedsDiv.style.display = "none";
+
+        const accountDiv = document.getElementById("account");
+        accountDiv.style.display = "none";
+    }
+
+    const SubmitNewPost = async(postText: string, postImage: File) => {
 
         const content = new FormData();
         content.append("token", localStorage.getItem("sessionid"));
         content.append("uid", localStorage.getItem("uid"));
         content.append("postText", postText);
-        content.append("image", setFileBanner);
+        content.append("image", postImage);
 
         try {
             const response = await fetch('../api/mimirnewpost', {
@@ -265,6 +312,20 @@ function home() {
     function handleAccountButton(event: React.MouseEvent<HTMLButtonElement>) {
         event.preventDefault()
         ClickedAccount();
+        removePosts();
+        getAccountPosts();
+    }
+
+    function handleHomeButton(event: React.MouseEvent<HTMLButtonElement>) {
+        event.preventDefault()
+        removePosts();
+        ClickedHome();
+    }
+
+    function handleFeedsButton(event: React.MouseEvent<HTMLButtonElement>) {
+        event.preventDefault();
+        removePosts();
+        ClickedFeeds();
     }
 
     function handleEditDescriptionButton(event: React.MouseEvent<HTMLButtonElement>) {
@@ -318,20 +379,22 @@ function home() {
         event.preventDefault();
         const newposteditor = document.getElementById("newposteditor");
         newposteditor.style.display = "none";
-        if (event.currentTarget.newposttextarea.value === undefined) { return; }
-        SubmitNewPost(event.currentTarget.newposttextarea.value);
+        if (event.currentTarget.newposttextarea.value === undefined && event.currentTarget.newpostfile.files[0] === undefined) { return; }
+        //console.log(event.currentTarget.newpostfile.files[0]);
+        SubmitNewPost(event.currentTarget.newposttextarea.value, event.currentTarget.newpostfile.files[0]);
     }
 
     function handleGetPostsButton(event: React.MouseEvent<HTMLButtonElement>) {
         event.preventDefault();
-        getPosts();
+        getAccountPosts();
     }
 
     function handleClickedForeignAccount() {
     }
 
-    function handleClickedLikeButton() {
+    function handleClickedLikeButton(postID: string) {
         console.log("Clicked Like Button");
+        likePost(postID);
     }
  
 
@@ -344,13 +407,28 @@ function home() {
         const tokenUIDPost = accountToken.toString() + ":" + accountUID.toString() + ":" + postid.toString();
 
         try {
-            const response = await fetch('../api/mimirupdatebanner?postiduid=' + tokenUIDPost, {
+            const response = await fetch('../api/mimirlikepost?tokenuidpostid=' + tokenUIDPost, {
                 method: "POST",
             })
             if (!response.ok) {
                 alert("Clicked Account Response Fail");
                 throw new Error(`HTTP error! status: ${response.status}`)
             }
+            
+            const boolJSON: boolReturn = await response.json();
+            console.log(boolJSON.returnvalue);
+            const postImage: HTMLImageElement = document.getElementById("likeicon" + postid);
+            const postText: HTMLHeadingElement = document.getElementById("likeamt" + postid);     
+
+            if (boolJSON.returnvalue) {
+                postImage.src = "/icons/likeiconfull.png";
+                postText.textContent = (parseInt(postText.textContent) + 1).toString();
+            }
+            else {
+                postImage.src = "/icons/likeicon.png";
+                postText.textContent = (parseInt(postText.textContent) - 1).toString();
+            }
+            
         }
         catch {
             console.warn("Cannot Like Post");
@@ -384,12 +462,9 @@ function home() {
         }
     }
 
-    const getPosts = async () => {
+    const getAccountPosts = async () => {
         await removePosts();
-        const content = new FormData();
-        content.append("uid", localStorage.getItem("uid"));
-        content.append("date", lastDate.toString());
-        
+
         const uidDate = localStorage.getItem("uid") + "|" + lastDate.toISOString();
         console.log(uidDate);
         try {
@@ -404,6 +479,30 @@ function home() {
 
             const postarray: PostInfo[] = await response.json();
             
+            appendPosts(postarray);
+        }
+        catch (err) {
+            console.error('Error setting description: ', err)
+        }
+    }
+
+    const getHomePosts = async () => {
+        await removePosts();
+
+        const uidDate = localStorage.getItem("uid") + "|" + lastDate.toISOString();
+        console.log(uidDate);
+        try {
+            const response = await fetch('../api/mimirpostgresgethomeposts?arguments=' + uidDate.toString(), {
+                method: "POST",
+            })
+
+            if (!response.ok) {
+                alert("Clicked Account Response Fail");
+                throw new Error(`HTTP error! status: ${response.status}`)
+            }
+
+            const postarray: PostInfo[] = await response.json();
+
             appendPosts(postarray);
         }
         catch (err) {
@@ -500,7 +599,7 @@ function home() {
 
             const likeButton = document.createElement("button");
             likeButton.className = "rlcbuttons";
-            likeButton.onclick = handleClickedLikeButton;
+            likeButton.onclick = handleClickedLikeButton.bind(this, posts[i].postid);
             posterinfo.append(likeButton);
 
             const likeDiv = document.createElement("div");
@@ -509,13 +608,22 @@ function home() {
 
             const likeIcon = document.createElement("img");
             likeIcon.className = "icon";
+            likeIcon.id = "likeicon" + posts[i].postid.toString();
+            const likeArray = posts[i].likes.split(",");
             likeIcon.src = "/icons/likeicon.png";
+            for (let j = 0; j < likeArray.length; j++) {
+                if (likeArray[j] == localStorage.getItem("uid")) {
+                    likeIcon.src = "/icons/likeiconfull.png";
+                    break;
+                }
+            }           
             likeIcon.width = 16;
             likeIcon.height = 16;
             likeDiv.append(likeIcon);
 
             const postlkamt = document.createElement("h4");
             postlkamt.className = "postlikeamount";
+            postlkamt.id = "likeamt" + posts[i].postid.toString();
             postlkamt.textContent = posts[i].likeAmt.toString();
             likeDiv.append(postlkamt);
 
@@ -558,6 +666,10 @@ function home() {
             const pcontentimg = document.createElement("img");
             pcontentimg.src = posts[i].images;
             pcontentimg.id = "postcontentimg" + nextPostDivID.toString();
+            if (posts[i].images == "") {
+                pcontentimg.width = 0;
+                pcontentimg.height = 0;
+            } 
             pcontentimg.className = "postcontentimg"
             postcontent.append(pcontentimg);
 
@@ -566,17 +678,11 @@ function home() {
     }
 
     const removePosts = async () => {
-
-        let children = document.getElementsByClassName("post");
-        for (let i = 0; i < children.length; i++) {
-            children[i].remove();
-        }
-
-        /* I seriously do not understand why I have to run it twice, the array starts at 0 and loops to the end? So it should work? BUT NO it doesn't */
-
-        children = document.getElementsByClassName("post");
-        for (let i = 0; i < children.length; i++) {
-            children[i].remove();
+        while (document.getElementsByClassName("post").length > 0) {
+            const children = document.getElementsByClassName("post");
+            for (let i = 0; i < children.length; i++) {
+                children[i].remove();
+            }
         }
     }
 
@@ -953,8 +1059,23 @@ function home() {
         for (let i = 0; i < elements.length; i++) {
             if (elements[i].getAttribute("commentOnComment") === commentID.toString()) {
                 elements[i].style.display = "block";
-                const parentDiv = elements[i].parentElement.parentElement;
-                parentDiv.style.paddingBottom = "15vh";
+                let parentDiv = elements[i].parentElement.parentElement;
+                let amtToSpace = 1;
+                while (true) {
+                    if (parentDiv.getAttribute("commentOnComment") != "0") {
+                        parentDiv = parentDiv.parentElement.parentElement;
+                        amtToSpace++;
+                    }
+                    else {
+                        parentDiv.style.paddingBottom = (amtToSpace * 17).toString() + "vh";
+                        
+                        break;
+                    }
+                    if (amtToSpace >= 100) {
+                        break;
+                    }
+                }
+
                 button.style.display = "none";
                 break;
             }
@@ -993,36 +1114,51 @@ function home() {
 
     }
 
+    // Infinite Scroll
+    const handleScroll = (e) => {
+        const bottom = e.target.scrollHeight - e.target.scrollTop - e.target.clientHeight < 10;
+        if (bottom) {
+            console.log("bottom")
+            getScrollPosts();
+        }
+    }
+
+    function getScrollPosts() {
+
+    }
+
 
 
   return (
-      <main className="main" onLoad={CheckToken}>
+      <main className="main" onLoad={StartScript}>
           <div id="sidebar" className="sidenav">
-              <div id="accountSideNav" className="sidenavitem">
-                  <button>Home</button>
+              <div id="homeSideNav" className="sidenavitem">
+                  <button onClick={handleHomeButton}>Home</button>
               </div>
 
-              <div id="accountSideNav" className="sidenavitem">
-                  <button>Feeds</button>
+              <div id="feedsSideNav" className="sidenavitem">
+                  <button onClick={handleFeedsButton}>Feeds</button>
               </div>
 
               <div id="accountSideNav" className="sidenavitem">
                   <button onClick={handleAccountButton}>Account</button>
               </div>
 
-              <div id="accountSideNav" className="sidenavitem">
+              <div id="newPostSideNav" className="sidenavitem">
                   <button onClick={handleNewPostButton}>New Post</button>
               </div>
           </div>
-          <div id="body">
+          <div id="body" onScroll={handleScroll}>
 
               <div id="home">
+                  <div className="home">
+                  </div>
               </div>
 
-              <div id="feeds">
+              <div id="feeds" className="startnone">
               </div>
 
-              <div id="account">
+              <div id="account" className="startnone">
                   <button id="profilebannerbutton" onClick={handleEditBannerButton}>
                       <img className="profilebanner" src="/tmpbanner.jpeg" height="1500" width="500" id="accountbanner" />
                   </button>
@@ -1050,7 +1186,7 @@ function home() {
               <div id="newpost">
               </div>
 
-              <div id="foreignaccount">
+              <div id="foreignaccount" >
               </div>
 
           </div>
@@ -1089,13 +1225,7 @@ function home() {
                   </div>
               </div>
 
-              <div>
-                  <button onClick={handleGetPostsButton}>Get Posts</button>
-              </div>
-
-              <div>
-                  <button onClick={showComments.bind(this, 7)}>Show Replies</button>
-              </div>
+              
 
           </div>
 
@@ -1145,7 +1275,7 @@ function home() {
                               cols={40}
                               spellCheck="true"
                           />
-                          <input type="file" onChange={onFileChangePostImage} accept="image/jpeg, image/png" className="fileuploadfield" />
+                          <input id="newpostfile" type="file" accept="image/jpeg, image/png" className="fileuploadfield" />
                           <button type="submit" className="modalbutton">Submit</button>
                       </form>
                   </div>
@@ -1154,9 +1284,12 @@ function home() {
               <div id="reply" className="modal">
                   <div className="modalcontent">
                       
-                      <div id="commentsDiv">
-                      </div>
-                      <button className="replyButton" onClick={openAddCommentButton.bind(this, 0)}>Add Comment</button>
+                        <div id="commentsDiv">
+                          </div>
+                      
+                      <div>
+                          <button className="replyButton" onClick={openAddCommentButton.bind(this, 0)}>Add Comment</button>
+                      </div>   
                   </div>
               </div>
 

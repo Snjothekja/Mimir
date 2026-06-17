@@ -1,11 +1,6 @@
 ﻿using Npgsql;
-using Npgsql.Internal.Postgres;
-using System;
-using System.Collections.Generic;
-using System.Runtime;
 using System.Security.Cryptography;
-using System.Text;
-using System.Transactions;
+
 
 namespace Mimir.backend.postgres
 {
@@ -21,9 +16,9 @@ namespace Mimir.backend.postgres
             }
 
             Random _ran = new Random();
-            byte[] salt = new byte[64];
+            byte[] salt = new byte[128];
             _ran.NextBytes(salt);
-            byte[] derivedKey = Rfc2898DeriveBytes.Pbkdf2(password, salt, 500000, HashAlgorithmName.SHA3_512, 64);
+            byte[] derivedKey = Rfc2898DeriveBytes.Pbkdf2(password, salt, 500000, HashAlgorithmName.SHA3_512, 128);
 
             bool finished = await AddUserToDB(username, salt, derivedKey);
             while (!finished) { }

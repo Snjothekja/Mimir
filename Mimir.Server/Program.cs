@@ -1,15 +1,13 @@
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.ObjectPool;
 using Mimir.backend.postgres;
 using Mimir.Server.Postgres;
 using Mimir.Server.TestScripts;
 using Npgsql;
-using System.Reflection.Metadata;
-using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using static Mimir.backend.postgres.PostgresManager;
-using static System.Net.Mime.MediaTypeNames;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -71,13 +69,7 @@ app.MapPost("api/mimirnewpost", async ([FromForm] string token, [FromForm] strin
     return validToken;
 }).WithName("GetPostgresNewPost").DisableAntiforgery();
 
-app.MapPost("api/mimirpostgresgetposts", async (string arguments) =>
-{
-    string[] argumentArray = arguments.Split('|');
-    Console.WriteLine(argumentArray[0] + "    " + DateTime.Parse(argumentArray[1]));
-    PostgresManager.PostStruct[] posts = await PostgresManager.GetPosts(int.Parse(argumentArray[0]), DateTime.Parse(argumentArray[1]));
-    return posts;
-}).WithName("GetPostgresGetPosts");
+
 
 app.MapPost("api/mimirpostgresgetuseraccount", async (string uidAndToken) =>
 {
@@ -111,7 +103,22 @@ app.MapPost("api/mimirchecktoken", (string uidToken) =>
     return @"{""check"":""true""}";
 }).WithName("CheckToken");
 
+// Posts
 
+app.MapPost("api/mimirpostgresgetposts", async (string arguments) =>
+{
+    string[] argumentArray = arguments.Split('|');
+    Console.WriteLine(argumentArray[0] + "    " + DateTime.Parse(argumentArray[1]));
+    PostgresManager.PostStruct[] posts = await PostgresManager.GetPosts(int.Parse(argumentArray[0]), DateTime.Parse(argumentArray[1]));
+    return posts;
+}).WithName("GetPostgresGetPosts");
+
+app.MapPost("api/mimirpostgresgethomeposts", async (string arguments) =>
+{
+    string[] argumentArray = arguments.Split('|');
+    Console.WriteLine(argumentArray[0] + "    " + DateTime.Parse(argumentArray[1]));
+    return await PostgresManager.GetHomePosts(int.Parse(argumentArray[0]), DateTime.Parse(argumentArray[1]));
+}).WithName("GetPostgresGetHomePosts");
 
 // Updating Account Information
 
@@ -163,19 +170,24 @@ app.MapPost("api/mimirlikepost", async (string tokenuidpostid) =>
     bool validToken = CheckToken.CheckUserToken(tokenUIDPostidArray[0], Int32.Parse(tokenUIDPostidArray[1]));
     if (!validToken)
     {
-        return;
+        return "{'return'='false'}";
     }
-    PostgresManager.AddLike(int.Parse(tokenUIDPostidArray[2]), int.Parse(tokenUIDPostidArray[1]));
-
+    bool changeBool = await PostgresManager.ChangeLike(int.Parse(tokenUIDPostidArray[1]), int.Parse(tokenUIDPostidArray[2]));
+    var data = new
+    {
+        returnvalue = changeBool
+    };
+    string jsonData = JsonSerializer.Serialize(data);
+    return jsonData;
 }).WithName("LikePost");
 
 app.MapPost("api/mimiraddcomment", async ([FromForm] string uid, [FromForm] string token, [FromForm] string postID, [FromForm] string commentID, [FromForm] string commentText) =>
 {
-    //bool validToken = CheckToken.CheckUserToken(token, int.Parse(uid));
-    //if (!validToken)
-    //{
-    //    return;
-    //}
+    bool validToken = CheckToken.CheckUserToken(token, int.Parse(uid));
+    if (!validToken)
+    {
+        return;
+    }
     PostgresManager.AddComment(uid, commentText, postID, commentID);
 }).WithName("AddComment").DisableAntiforgery();
 

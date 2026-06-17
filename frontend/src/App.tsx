@@ -212,7 +212,7 @@ function App() {
                               <label htmlFor="passwordInput">
                                   Password (Must contain at least one (1) number (0-9) and special character (!@#$%^&*)):
                               </label>
-                              <input type="password" id="passwordInput" pattern="/^(?=.*[\d])(?=.*[!@#$%^&*])[\w!@#$%^&*]{6,}$/" />
+                              <input type="password" id="passwordInput" pattern="/^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{6,}$/" />
 
                           </div>
                           <div>

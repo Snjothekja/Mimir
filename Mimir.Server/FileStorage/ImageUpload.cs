@@ -8,8 +8,8 @@ namespace Mimir.Server.FileStorage
 
         public static string UploadImage(IFormFile image, string whereToUpload)
         {
-            string fileName = Path.ChangeExtension(Path.GetRandomFileName(), ".jpg");
-            var filePath = Path.Combine("C:/Users/Lykaios/Desktop/Coding_Stuff/Mimir/frontend/public/", fileName);
+            string fileName = Path.ChangeExtension(Path.GetRandomFileName(), ".webp");
+            string filePath = "";
             string fileNamePath = "";
             switch (whereToUpload)
             {
